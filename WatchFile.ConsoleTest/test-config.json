@@ -16,44 +16,37 @@
       "type": "Directory",
       "recursive": false,
       "fileFilters": ["*.csv"],
+      "excludePatterns": ["*.watchfile", "*.tmp", "*_backup_*"],
       "watchEvents": ["Created", "Modified"],
       "fileSettings": {
         "fileType": "CSV",
-        "hasHeader": true,
+        "hasHeader": false,
         "delimiter": ",",
         "encoding": "UTF-8",
         "columnMappings": [
           {
-            "sourceColumn": "Name",
-            "targetName": "EmployeeName",
-            "dataType": "String",
-            "required": true
-          },
-          {
-            "sourceColumn": "Age",
-            "targetName": "Age",
-            "dataType": "Integer",
-            "required": false
-          },
-          {
-            "sourceColumn": "Email",
-            "targetName": "Email",
+            "sourceColumn": "测试结果",
+            "sourceColumnSeq": 17,
+            "targetName": "TestResult",
             "dataType": "String",
             "required": false
           },
           {
-            "sourceColumn": "Department",
-            "targetName": "Department",
+            "sourceColumn": "产品条码",
+            "sourceColumnSeq": 22,
+            "targetName": "Barcode",
             "dataType": "String",
-            "required": false
-          },
-          {
-            "sourceColumn": "Salary",
-            "targetName": "Salary",
-            "dataType": "Decimal",
             "required": false
           }
         ]
+      },
+      "watchFileSettings": {
+        "watchFileDirectory": ".watch",
+        "watchFileExtension": ".watchfile",
+        "maxConcurrentFiles": 16,
+        "throwOnMissingWatchFile": false,
+        "enableDifferenceLogging": true,
+        "differenceLogPath": "logs/differences.log"
       }
     },
     {
@@ -93,6 +86,80 @@
             "targetName": "Salesperson",
             "dataType": "String",
             "required": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "excel-xls-monitor",
+      "name": "员工Excel文件监控(XLS)",
+      "enabled": true,
+      "path": "TestData\\employees.xls",
+      "type": "File",
+      "watchEvents": ["Created", "Modified"],
+      "fileSettings": {
+        "fileType": "Excel",
+        "sheetName": "Sheet1",
+        "hasHeader": true,
+        "encoding": "UTF-8",
+        "columnMappings": [
+          {
+            "sourceColumn": "Name",
+            "targetName": "EmployeeName",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "Department",
+            "targetName": "Department",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "Salary",
+            "targetName": "Salary",
+            "dataType": "Decimal",
+            "required": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "excel-xlsx-monitor",
+      "name": "产品Excel文件监控(XLSX)",
+      "enabled": true,
+      "path": "TestData\\products.xlsx",
+      "type": "File",
+      "watchEvents": ["Created", "Modified"],
+      "fileSettings": {
+        "fileType": "Excel",
+        "sheetName": "Sheet1",
+        "hasHeader": true,
+        "encoding": "UTF-8",
+        "columnMappings": [
+          {
+            "sourceColumn": "ProductID",
+            "targetName": "ProductID",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "ProductName",
+            "targetName": "ProductName",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "Price",
+            "targetName": "Price",
+            "dataType": "Decimal",
+            "required": true
+          },
+          {
+            "sourceColumn": "Stock",
+            "targetName": "Stock",
+            "dataType": "Integer",
+            "required": true
           }
         ]
       }

@@ -5,15 +5,15 @@
 - `WatchFile.Core` - 主要类和接口
 - `WatchFile.Core.Configuration` - 配置管理
 - `WatchFile.Core.Configuration.Models` - 配置模型
-- `WatchFile.Core.Events` - 事件参数和接口
-- `WatchFile.Core.Monitoring` - 监控功能
+- `WatchFile.Core.Events` - 事件参数和数据变化分析
+- `WatchFile.Core.Monitoring` - 文件监控和临时文件管理
 - `WatchFile.Core.Parsing` - 文件解析
 
 ## 核心类
 
 ### WatchFileManager
 
-文件监控管理器，库的主入口点。
+文件监控管理器，库的主入口点。提供完整的文件监控、内容变化分析和事件通知功能。
 
 ```csharp
 public class WatchFileManager : IDisposable
@@ -48,6 +48,8 @@ public Dictionary<string, MonitorStatus> WatcherStatuses { get; }
 
 ```csharp
 public event EventHandler<FileChangedEventArgs>? FileChanged;
+```
+文件变化事件，包含详细的内容差异分析。
 ```
 文件变化事件。
 
@@ -188,14 +190,88 @@ public static FileParseResult ParseExcel(string filePath, FileSettings settings)
 
 ### FileChangedEventArgs
 
-文件变化事件参数。
+文件变化事件参数，包含详细的内容变化分析。
 
 ```csharp
 public class FileChangedEventArgs : EventArgs
 {
-    public string WatchItemId { get; set; }        // 监控项ID
-    public string WatchItemName { get; set; }      // 监控项名称
-    public string FilePath { get; set; }           // 文件路径
+    public string WatchItemId { get; set; }           // 监控项ID
+    public string WatchItemName { get; set; }         // 监控项名称
+    public string FilePath { get; set; }              // 文件路径
+    public WatcherChangeTypes ChangeType { get; set; } // 变化类型
+    public DateTime Timestamp { get; set; }           // 事件时间
+    public long FileSize { get; set; }                // 文件大小
+    public bool IsSuccess { get; }                    // 是否处理成功
+    public Exception? Exception { get; set; }         // 异常信息
+    
+    // 数据内容
+    public List<Dictionary<string, object>>? ExtractedData { get; set; }  // 当前数据
+    public List<Dictionary<string, object>>? PreviousData { get; set; }   // 之前数据
+    
+    // 变化分析
+    public DataChangeDetails? ChangeDetails { get; set; }  // 详细变化信息
+    public int DataRowCount { get; }                       // 当前数据行数
+}
+```
+
+### DataChangeDetails
+
+数据变化详情分析。
+
+```csharp
+public class DataChangeDetails
+{
+    public List<Dictionary<string, object>> AddedRows { get; set; }    // 新增的行
+    public List<Dictionary<string, object>> DeletedRows { get; set; }  // 删除的行
+    public List<RowChange> ModifiedRows { get; set; }                  // 修改的行
+    
+    public int RowCountChange { get; }     // 总行数变化
+    public bool HasChanges { get; }        // 是否有变化
+    
+    public string GetSummary()             // 获取变化摘要
+}
+```
+
+### RowChange
+
+行变化详情。
+
+```csharp
+public class RowChange
+{
+    public int RowIndex { get; set; }                           // 行索引
+    public Dictionary<string, object> OldValues { get; set; }   // 修改前的值
+    public Dictionary<string, object> NewValues { get; set; }   // 修改后的值
+    public List<FieldChange> FieldChanges { get; set; }        // 字段变化列表
+}
+```
+
+### FieldChange
+
+字段变化详情。
+
+```csharp
+public class FieldChange
+{
+    public string FieldName { get; set; }        // 字段名
+    public object? OldValue { get; set; }        // 旧值
+    public object? NewValue { get; set; }        // 新值
+    public FieldChangeType ChangeType { get; set; } // 变化类型
+}
+```
+
+### FieldChangeType
+
+字段变化类型枚举。
+
+```csharp
+public enum FieldChangeType
+{
+    Modified,  // 值修改
+    Added,     // 新增字段
+    Removed    // 删除字段
+}
+```
     public WatcherChangeTypes ChangeType { get; set; } // 变化类型
     public DateTime Timestamp { get; set; }        // 事件时间
     public List<Dictionary<string, object>>? ExtractedData { get; set; } // 提取的数据
@@ -272,6 +348,63 @@ public abstract class FileChangedHandlerBase : IFileChangedHandler
 ```csharp
 public class WatchFileConfiguration
 {
+    public string Version { get; set; }                   // 配置版本
+    public GlobalSettings GlobalSettings { get; set; }    // 全局设置
+    public List<WatchItem> WatchItems { get; set; }      // 监控项列表
+}
+```
+
+### WatchItem
+
+监控项配置。
+
+```csharp
+public class WatchItem
+{
+    public string Id { get; set; }                        // 监控项ID
+    public string Name { get; set; }                      // 监控项名称
+    public bool Enabled { get; set; }                     // 是否启用
+    public string Path { get; set; }                      // 监控路径
+    public WatchType Type { get; set; }                   // 监控类型
+    public bool Recursive { get; set; }                   // 是否递归
+    public List<string> FileFilters { get; set; }         // 文件过滤器
+    public List<string> ExcludePatterns { get; set; }     // 排除模式
+    public List<WatchEvent> WatchEvents { get; set; }     // 监控事件
+    public FileSettings FileSettings { get; set; }        // 文件设置
+    public WatchFileSettings WatchFileSettings { get; set; } // 临时文件设置
+}
+```
+
+### WatchFileSettings
+
+临时文件管理配置。
+
+```csharp
+public class WatchFileSettings
+{
+    public string WatchFileDirectory { get; set; }        // 临时文件目录名
+    public string WatchFileExtension { get; set; }        // 临时文件扩展名
+    public int MaxConcurrentFiles { get; set; }           // 最大并发文件数
+    public bool ThrowOnMissingWatchFile { get; set; }     // 临时文件丢失时是否抛异常
+    public bool EnableDifferenceLogging { get; set; }     // 是否启用差异日志
+    public string DifferenceLogPath { get; set; }         // 差异日志路径
+}
+```
+
+### FileSettings
+
+文件解析设置。
+
+```csharp
+public class FileSettings
+{
+    public FileType FileType { get; set; }                // 文件类型
+    public bool HasHeader { get; set; }                   // 是否有标题行
+    public string Delimiter { get; set; }                 // 分隔符
+    public string Encoding { get; set; }                  // 编码
+    public List<ColumnMapping> ColumnMappings { get; set; } // 列映射
+}
+```
     public string Version { get; set; }           // 配置版本
     public GlobalSettings GlobalSettings { get; set; } // 全局设置
     public List<WatchItem> WatchItems { get; set; }   // 监控项列表

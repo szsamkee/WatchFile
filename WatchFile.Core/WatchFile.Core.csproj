@@ -6,10 +6,10 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
+    <PackageVersion>2.0.0</PackageVersion>
     <Authors>Your Name</Authors>
-    <Description>A cross-platform file monitoring library that supports CSV and Excel files with configurable column mapping and change notifications.</Description>
-    <PackageTags>file;monitoring;csv;excel;filewatcher</PackageTags>
+    <Description>A cross-platform intelligent file monitoring library with advanced content change analysis. Specially optimized for industrial environments with thousands of small files. Supports CSV and Excel files with detailed diff tracking, temporary file caching, and configurable column mapping.</Description>
+    <PackageTags>file;monitoring;csv;excel;filewatcher;industrial;content-analysis;diff-tracking</PackageTags>
     <RepositoryUrl>https://github.com/yourusername/WatchFile</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
@@ -17,15 +17,11 @@
   <ItemGroup>
     <PackageReference Include="NPOI" Version="2.6.2" />
     <PackageReference Include="CsvHelper" Version="30.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net461'">
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-    <PackageReference Include="System.Text.Json" Version="8.0.4" />
   </ItemGroup>
 
 </Project>

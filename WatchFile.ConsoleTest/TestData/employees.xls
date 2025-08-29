@@ -1,5 +1,8 @@
+Name,Age,Email,Department,Salary
 张三,25,zhangsan@company.com,技术部,8000
 李四,30,lisi@company.com,销售部,6500
 王五,28,wangwu@company.com,技术部,9500
 赵六,35,zhaoliu@company.com,市场部,7200
 钱七,26,qianqi@company.com,技术部,8800
+孙八,29,sunba@company.com,人事部,7000
+周九,32,zhoujiu@company.com,财务部,7800

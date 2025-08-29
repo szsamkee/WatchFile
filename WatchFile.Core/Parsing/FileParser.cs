@@ -173,13 +173,16 @@ namespace WatchFile.Core.Parsing
                 {
                     object value;
                     
-                    if (hasHeader && mapping.SourceColumn is string columnName)
+                    // sourceColumnSeq 优先于 sourceColumn
+                    if (mapping.SourceColumnSeq.HasValue)
                     {
-                        value = csv.GetField(columnName) ?? string.Empty;
+                        // 使用列索引
+                        value = csv.GetField(mapping.SourceColumnSeq.Value) ?? string.Empty;
                     }
-                    else if (mapping.SourceColumn is int columnIndex)
+                    else if (hasHeader && !string.IsNullOrEmpty(mapping.SourceColumn))
                     {
-                        value = csv.GetField(columnIndex) ?? string.Empty;
+                        // 使用列名
+                        value = csv.GetField(mapping.SourceColumn) ?? string.Empty;
                     }
                     else
                     {
@@ -215,18 +218,20 @@ namespace WatchFile.Core.Parsing
                 {
                     ICell? cell = null;
                     
-                    if (settings.HasHeader && headerRow != null && mapping.SourceColumn is string columnName)
+                    // sourceColumnSeq 优先于 sourceColumn
+                    if (mapping.SourceColumnSeq.HasValue)
+                    {
+                        // 使用列索引
+                        cell = row.GetCell(mapping.SourceColumnSeq.Value);
+                    }
+                    else if (settings.HasHeader && headerRow != null && !string.IsNullOrEmpty(mapping.SourceColumn))
                     {
                         // 根据列名查找列索引
-                        var columnIndex = FindColumnIndexByName(headerRow, columnName);
+                        var columnIndex = FindColumnIndexByName(headerRow, mapping.SourceColumn);
                         if (columnIndex >= 0)
                         {
                             cell = row.GetCell(columnIndex);
                         }
-                    }
-                    else if (mapping.SourceColumn is int columnIndex)
-                    {
-                        cell = row.GetCell(columnIndex);
                     }
 
                     var value = GetCellValue(cell);

@@ -41,6 +41,16 @@ namespace WatchFile.Core.Events
         public List<Dictionary<string, object>>? ExtractedData { get; set; }
 
         /// <summary>
+        /// 变化前的数据（仅在Modified时有值）
+        /// </summary>
+        public List<Dictionary<string, object>>? PreviousData { get; set; }
+
+        /// <summary>
+        /// 数据变化详情
+        /// </summary>
+        public DataChangeDetails? ChangeDetails { get; set; }
+
+        /// <summary>
         /// 处理过程中的异常（如果有）
         /// </summary>
         public Exception? Exception { get; set; }
@@ -165,5 +175,128 @@ namespace WatchFile.Core.Events
         /// 暂停
         /// </summary>
         Paused
+    }
+
+    /// <summary>
+    /// 数据变化详情
+    /// </summary>
+    public class DataChangeDetails
+    {
+        /// <summary>
+        /// 新增的行数据
+        /// </summary>
+        public List<Dictionary<string, object>> AddedRows { get; set; } = new();
+
+        /// <summary>
+        /// 删除的行数据
+        /// </summary>
+        public List<Dictionary<string, object>> DeletedRows { get; set; } = new();
+
+        /// <summary>
+        /// 修改的行数据（包含修改前后的值）
+        /// </summary>
+        public List<RowChange> ModifiedRows { get; set; } = new();
+
+        /// <summary>
+        /// 总行数变化
+        /// </summary>
+        public int RowCountChange => AddedRows.Count - DeletedRows.Count;
+
+        /// <summary>
+        /// 是否有数据变化
+        /// </summary>
+        public bool HasChanges => AddedRows.Count > 0 || DeletedRows.Count > 0 || ModifiedRows.Count > 0;
+
+        /// <summary>
+        /// 变化摘要
+        /// </summary>
+        public string GetSummary()
+        {
+            var parts = new List<string>();
+            
+            if (AddedRows.Count > 0)
+                parts.Add($"新增{AddedRows.Count}行");
+                
+            if (DeletedRows.Count > 0)
+                parts.Add($"删除{DeletedRows.Count}行");
+                
+            if (ModifiedRows.Count > 0)
+                parts.Add($"修改{ModifiedRows.Count}行");
+                
+            return parts.Count > 0 ? string.Join(", ", parts) : "无变化";
+        }
+    }
+
+    /// <summary>
+    /// 行变化详情
+    /// </summary>
+    public class RowChange
+    {
+        /// <summary>
+        /// 行索引（从0开始）
+        /// </summary>
+        public int RowIndex { get; set; }
+
+        /// <summary>
+        /// 修改前的数据
+        /// </summary>
+        public Dictionary<string, object> OldValues { get; set; } = new();
+
+        /// <summary>
+        /// 修改后的数据
+        /// </summary>
+        public Dictionary<string, object> NewValues { get; set; } = new();
+
+        /// <summary>
+        /// 变化的字段
+        /// </summary>
+        public List<FieldChange> FieldChanges { get; set; } = new();
+    }
+
+    /// <summary>
+    /// 字段变化详情
+    /// </summary>
+    public class FieldChange
+    {
+        /// <summary>
+        /// 字段名
+        /// </summary>
+        public string FieldName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 旧值
+        /// </summary>
+        public object? OldValue { get; set; }
+
+        /// <summary>
+        /// 新值
+        /// </summary>
+        public object? NewValue { get; set; }
+
+        /// <summary>
+        /// 变化类型
+        /// </summary>
+        public FieldChangeType ChangeType { get; set; }
+    }
+
+    /// <summary>
+    /// 字段变化类型
+    /// </summary>
+    public enum FieldChangeType
+    {
+        /// <summary>
+        /// 值修改
+        /// </summary>
+        Modified,
+
+        /// <summary>
+        /// 新增字段
+        /// </summary>
+        Added,
+
+        /// <summary>
+        /// 删除字段
+        /// </summary>
+        Removed
     }
 }

@@ -2,14 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using WatchFile.Core.Configuration.Models;
-
-#if NET461
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-#else
-using System.Text.Json;
-using System.Text.Json.Serialization;
-#endif
 
 namespace WatchFile.Core.Configuration
 {
@@ -41,7 +35,6 @@ namespace WatchFile.Core.Configuration
             {
                 var jsonContent = File.ReadAllText(configPath);
                 
-#if NET461
                 var settings = new JsonSerializerSettings
                 {
                     Converters = { new StringEnumConverter() },
@@ -49,16 +42,6 @@ namespace WatchFile.Core.Configuration
                 };
                 
                 var config = JsonConvert.DeserializeObject<WatchFileConfiguration>(jsonContent, settings);
-#else
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    Converters = { new JsonStringEnumConverter() },
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                };
-                
-                var config = JsonSerializer.Deserialize<WatchFileConfiguration>(jsonContent, options);
-#endif
                 
                 if (config == null)
                 {
@@ -91,7 +74,6 @@ namespace WatchFile.Core.Configuration
                     Directory.CreateDirectory(directory);
                 }
 
-#if NET461
                 var settings = new JsonSerializerSettings
                 {
                     Formatting = Formatting.Indented,
@@ -100,16 +82,6 @@ namespace WatchFile.Core.Configuration
                 };
                 
                 var jsonContent = JsonConvert.SerializeObject(config, settings);
-#else
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Converters = { new JsonStringEnumConverter() },
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                };
-                
-                var jsonContent = JsonSerializer.Serialize(config, options);
-#endif
                 
                 File.WriteAllText(configPath, jsonContent);
             }

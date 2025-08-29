@@ -1,6 +1,6 @@
-# WatchFile - 文件监控与内容通知库
+# WatchFile - 智能文件监控与内容变化分析库
 
-一个支持 .NET Framework 4.6.1+ 和 .NET 6+ 的文件监控库，可以监控目录或文件的变化，并自动解析 CSV 和 Excel 文件内容，通过回调函数通知应用程序。
+一个专为工控环境设计的高性能文件监控库，支持 .NET Framework 4.6.1+ 和 .NET 6+，能够监控大量小文件的变化，并提供详细的内容差异分析，特别适用于工控设备日志文件监控。
 
 ## 🚀 项目结构
 
@@ -8,33 +8,60 @@
 WatchFile/
 ├── WatchFile.Core/                    # 核心类库项目
 │   ├── Configuration/                 # 配置管理
-│   ├── Events/                       # 事件定义
-│   ├── Monitoring/                   # 监控功能
-│   ├── Parsing/                      # 文件解析
+│   ├── Events/                       # 事件定义与数据变化分析
+│   ├── Monitoring/                   # 文件监控与临时文件管理
+│   ├── Parsing/                      # 文件解析（CSV/Excel）
 │   ├── watchfile-config.json        # 默认配置文件
 │   └── API.md                        # API文档
 ├── WatchFile.ConsoleTest/            # 控制台测试项目
 │   ├── TestData/                     # 测试数据文件
+│   │   └── .watch/                   # 监控临时文件目录
 │   ├── test-config.json             # 测试配置文件
 │   └── Program.cs                    # 测试程序
 ├── WatchFile.sln                     # 解决方案文件
 └── README.md                         # 项目说明
 ```
 
-## 特性
+## ✨ 核心特性
 
+### 📂 文件监控
 - ✅ 支持多目标框架（.NET Framework 4.6.1+ 和 .NET 6+）
-- ✅ 监控目录或单个文件的变化（新增、修改、删除）
-- ✅ 支持 CSV 文件解析（逗号/Tab 分割，多种编码）
-- ✅ 支持 Excel 文件解析（.xls/.xlsx）
+- ✅ 监控目录或单个文件的变化（新增、修改、删除、重命名）
+- ✅ 智能排除模式（避免监控临时文件、备份文件等）
+- ✅ 并发控制（工控环境优化，默认最大16个文件同时处理）
+- ✅ 异步事件通知机制
+
+### 📊 内容变化分析
+- ✅ **临时文件缓存策略**：使用 `.watchfile` 文件存储历史快照
+- ✅ **精确差异检测**：行级和字段级的详细变化分析
+- ✅ **内存优化**：大量文件监控时有效控制内存使用
+- ✅ **变化类型识别**：新增行、删除行、修改行的具体内容
+- ✅ **实时变化通知**：`旧值 → 新值` 的详细变化报告
+
+### 📄 文件格式支持
+- ✅ CSV 文件解析（逗号/Tab/自定义分割符，多种编码）
+- ✅ Excel 文件解析（.xls/.xlsx）
+- ✅ 灵活的列映射和数据类型转换
+- ✅ 可选的标题行处理
+
+### ⚙️ 配置与扩展
 - ✅ 基于 JSON 配置文件的灵活配置
-- ✅ 列映射和数据类型转换
-- ✅ 异步事件通知
 - ✅ 可扩展的处理器架构
+- ✅ 详细的差异日志记录
 - ✅ 错误处理和重试机制
 - ✅ 适用于 WinForms、WPF、控制台等应用
 
-## 快速开始
+## 🏭 工控场景优化
+
+本库特别针对工控环境进行了优化：
+
+- **大量小文件监控**：支持监控几千甚至几万个不超过10MB的文件
+- **设备日志解析**：专为工控设备生成的CSV/Excel日志文件设计
+- **内存效率**：通过临时文件策略避免大量内存占用
+- **异常容忍**：临时文件丢失时自动恢复机制
+- **详细审计**：完整的文件变化历史和差异日志
+
+## 🚀 快速开始
 
 ### 1. 构建项目
 
@@ -78,14 +105,15 @@ Install-Package WatchFile.Core
   },
   "watchItems": [
     {
-      "id": "sales-monitor",
-      "name": "销售数据监控",
+      "id": "industrial-logs-monitor",
+      "name": "工控设备日志监控",
       "enabled": true,
-      "path": "D:\\Data\\Sales",
+      "path": "D:\\IndustrialLogs",
       "type": "Directory",
       "recursive": true,
-      "fileFilters": ["*.csv"],
-      "watchEvents": ["Created", "Modified"],
+      "fileFilters": ["*.csv", "*.xlsx"],
+      "excludePatterns": ["*.watchfile", "*.tmp", "*_backup_*", "system_*"],
+      "watchEvents": ["Created", "Modified", "Deleted"],
       "fileSettings": {
         "fileType": "CSV",
         "hasHeader": true,
@@ -93,25 +121,237 @@ Install-Package WatchFile.Core
         "encoding": "UTF-8",
         "columnMappings": [
           {
-            "sourceColumn": "产品名称",
-            "targetName": "ProductName",
+            "sourceColumn": "DeviceID",
+            "targetName": "DeviceID",
             "dataType": "String",
             "required": true
           },
           {
-            "sourceColumn": "销售额",
-            "targetName": "SalesAmount",
+            "sourceColumn": "Timestamp",
+            "targetName": "Timestamp",
+            "dataType": "DateTime",
+            "required": true,
+            "format": "yyyy-MM-dd HH:mm:ss"
+          },
+          {
+            "sourceColumn": "Value",
+            "targetName": "MeasureValue",
             "dataType": "Decimal",
             "required": true
           }
         ]
+      },
+      "watchFileSettings": {
+        "watchFileDirectory": ".watch",
+        "watchFileExtension": ".watchfile",
+        "maxConcurrentFiles": 16,
+        "throwOnMissingWatchFile": false,
+        "enableDifferenceLogging": true,
+        "differenceLogPath": "logs/differences.log"
       }
     }
   ]
 }
 ```
 
-### 3. 基本使用
+### 4. 配置模式参考
+
+以下是不同场景的配置示例，您可以根据需要参考使用：
+
+#### 4.1 CSV文件监控（逗号分隔）
+
+```json
+{
+  "id": "employees-csv-monitor",
+  "name": "员工CSV文件监控",
+  "enabled": true,
+  "path": "Data/employees.csv",
+  "type": "File",
+  "watchEvents": ["Created", "Modified"],
+  "fileSettings": {
+    "fileType": "CSV",
+    "hasHeader": true,
+    "delimiter": ",",
+    "encoding": "UTF-8",
+    "columnMappings": [
+      {
+        "sourceColumn": "Name",
+        "targetName": "EmployeeName",
+        "dataType": "String",
+        "required": true
+      },
+      {
+        "sourceColumn": "Department",
+        "targetName": "Department",
+        "dataType": "String",
+        "required": true
+      },
+      {
+        "sourceColumn": "Salary",
+        "targetName": "Salary",
+        "dataType": "Decimal",
+        "required": true
+      }
+    ]
+  }
+}
+```
+
+#### 4.2 CSV文件监控（Tab分隔）
+
+```json
+{
+  "id": "sales-tab-monitor",
+  "name": "销售数据Tab分割监控",
+  "enabled": true,
+  "path": "Data/sales.csv",
+  "type": "File",
+  "watchEvents": ["Modified"],
+  "fileSettings": {
+    "fileType": "CSV",
+    "hasHeader": true,
+    "delimiter": "\t",
+    "encoding": "UTF-8",
+    "columnMappings": [
+      {
+        "sourceColumn": "产品名称",
+        "targetName": "ProductName",
+        "dataType": "String",
+        "required": true
+      },
+      {
+        "sourceColumn": "销售额",
+        "targetName": "SalesAmount",
+        "dataType": "Decimal",
+        "required": true
+      },
+      {
+        "sourceColumn": "日期",
+        "targetName": "SalesDate",
+        "dataType": "DateTime",
+        "required": true,
+        "format": "yyyy-MM-dd"
+      }
+    ]
+  }
+}
+```
+
+#### 4.3 Excel文件监控（.xls）
+
+```json
+{
+  "id": "excel-xls-monitor",
+  "name": "员工Excel文件监控(XLS)",
+  "enabled": true,
+  "path": "Data/employees.xls",
+  "type": "File",
+  "watchEvents": ["Created", "Modified"],
+  "fileSettings": {
+    "fileType": "Excel",
+    "sheetName": "Sheet1",
+    "hasHeader": true,
+    "encoding": "UTF-8",
+    "columnMappings": [
+      {
+        "sourceColumn": "Name",
+        "targetName": "EmployeeName",
+        "dataType": "String",
+        "required": true
+      },
+      {
+        "sourceColumn": "Department",
+        "targetName": "Department",
+        "dataType": "String",
+        "required": true
+      },
+      {
+        "sourceColumn": "Salary",
+        "targetName": "Salary",
+        "dataType": "Decimal",
+        "required": true
+      }
+    ]
+  }
+}
+```
+
+#### 4.4 Excel文件监控（.xlsx）
+
+```json
+{
+  "id": "excel-xlsx-monitor",
+  "name": "产品Excel文件监控(XLSX)",
+  "enabled": true,
+  "path": "Data/products.xlsx",
+  "type": "File",
+  "watchEvents": ["Created", "Modified"],
+  "fileSettings": {
+    "fileType": "Excel",
+    "sheetName": "Sheet1",
+    "hasHeader": true,
+    "encoding": "UTF-8",
+    "columnMappings": [
+      {
+        "sourceColumn": "ProductID",
+        "targetName": "ProductID",
+        "dataType": "String",
+        "required": true
+      },
+      {
+        "sourceColumn": "ProductName",
+        "targetName": "ProductName",
+        "dataType": "String",
+        "required": true
+      },
+      {
+        "sourceColumn": "Price",
+        "targetName": "Price",
+        "dataType": "Decimal",
+        "required": true
+      },
+      {
+        "sourceColumn": "Stock",
+        "targetName": "Stock",
+        "dataType": "Integer",
+        "required": true
+      }
+    ]
+  }
+}
+```
+
+#### 4.5 目录监控（多文件类型）
+
+```json
+{
+  "id": "directory-monitor",
+  "name": "数据目录监控",
+  "enabled": true,
+  "path": "D:/DataFiles",
+  "type": "Directory",
+  "recursive": true,
+  "fileFilters": ["*.csv", "*.xlsx", "*.xls"],
+  "excludePatterns": ["*.watchfile", "*.tmp", "*_backup_*", "~$*"],
+  "watchEvents": ["Created", "Modified", "Deleted"],
+  "fileSettings": {
+    "fileType": "CSV",
+    "hasHeader": true,
+    "delimiter": ",",
+    "encoding": "UTF-8"
+  },
+  "watchFileSettings": {
+    "watchFileDirectory": ".watch",
+    "watchFileExtension": ".watchfile",
+    "maxConcurrentFiles": 16,
+    "throwOnMissingWatchFile": false,
+    "enableDifferenceLogging": true,
+    "differenceLogPath": "logs/differences.log"
+  }
+}
+```
+
+### 5. 基本使用
 
 ```csharp
 using WatchFile.Core;
@@ -123,17 +363,53 @@ var manager = new WatchFileManager("watchfile-config.json");
 // 注册事件处理
 manager.FileChanged += (sender, e) =>
 {
-    Console.WriteLine($"文件变化: {e.FilePath}");
+    Console.WriteLine($"\n[文件变化事件]");
+    Console.WriteLine($"时间: {e.Timestamp:yyyy-MM-dd HH:mm:ss}");
+    Console.WriteLine($"文件: {e.FilePath}");
+    Console.WriteLine($"变化类型: {e.ChangeType}");
     
-    if (e.ExtractedData != null)
+    // 显示详细的数据变化
+    if (e.ChangeDetails?.HasChanges == true)
     {
-        foreach (var row in e.ExtractedData)
+        Console.WriteLine($"变化摘要: {e.ChangeDetails.GetSummary()}");
+        
+        // 显示新增的行
+        if (e.ChangeDetails.AddedRows.Count > 0)
         {
-            foreach (var column in row)
+            Console.WriteLine($"新增 {e.ChangeDetails.AddedRows.Count} 行:");
+            foreach (var row in e.ChangeDetails.AddedRows.Take(3))
             {
-                Console.WriteLine($"{column.Key}: {column.Value}");
+                foreach (var column in row)
+                {
+                    Console.WriteLine($"  + {column.Key}: {column.Value}");
+                }
             }
         }
+        
+        // 显示修改的行
+        if (e.ChangeDetails.ModifiedRows.Count > 0)
+        {
+            Console.WriteLine($"修改 {e.ChangeDetails.ModifiedRows.Count} 行:");
+            foreach (var change in e.ChangeDetails.ModifiedRows.Take(3))
+            {
+                foreach (var fieldChange in change.FieldChanges)
+                {
+                    Console.WriteLine($"  ~ {fieldChange.FieldName}: {fieldChange.OldValue} -> {fieldChange.NewValue}");
+                }
+            }
+        }
+        
+        // 显示删除的行
+        if (e.ChangeDetails.DeletedRows.Count > 0)
+        {
+            Console.WriteLine($"删除 {e.ChangeDetails.DeletedRows.Count} 行");
+        }
+    }
+    
+    // 显示当前数据
+    if (e.ExtractedData != null)
+    {
+        Console.WriteLine($"当前文件数据行数: {e.ExtractedData.Count}");
     }
 };
 
@@ -150,32 +426,124 @@ manager.Dispose();
 ### 4. 自定义处理器
 
 ```csharp
-public class DatabaseHandler : FileChangedHandlerBase
+public class FileChangeHandler : IFileChangedHandler
 {
-    public override async Task HandleFileChanged(FileChangedEventArgs args)
+    public async Task HandleFileChanged(FileChangedEventArgs args)
     {
-        if (!ShouldHandle(args)) return;
+        // 只处理CSV文件
+        if (!args.FilePath.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            return;
 
         try
         {
-            // 保存到数据库
-            await SaveToDatabase(args.ExtractedData);
-            LogInfo($"成功处理 {args.DataRowCount} 行数据");
+            switch (args.ChangeType)
+            {
+                case WatcherChangeTypes.Created:
+                    await HandleNewFile(args);
+                    break;
+                    
+                case WatcherChangeTypes.Changed:
+                    await HandleFileModified(args);
+                    break;
+                    
+                case WatcherChangeTypes.Deleted:
+                    await HandleFileDeleted(args);
+                    break;
+            }
         }
         catch (Exception ex)
         {
-            LogError($"数据库保存失败: {ex.Message}", ex);
+            Console.WriteLine($"处理文件变化时出错: {ex.Message}");
         }
     }
 
-    private async Task SaveToDatabase(List<Dictionary<string, object>> data)
+    private async Task HandleNewFile(FileChangedEventArgs args)
     {
-        // 数据库操作实现
+        Console.WriteLine($"检测到新文件: {Path.GetFileName(args.FilePath)}");
+        
+        if (args.ExtractedData != null)
+        {
+            // 在这里添加您的业务逻辑
+            // 例如：发送通知、记录日志、数据验证等
+            await ProcessData(args.ExtractedData);
+            Console.WriteLine($"已处理 {args.ExtractedData.Count} 条新记录");
+        }
+    }
+
+    private async Task HandleFileModified(FileChangedEventArgs args)
+    {
+        if (args.ChangeDetails?.HasChanges == true)
+        {
+            Console.WriteLine($"文件更新: {args.ChangeDetails.GetSummary()}");
+            
+            // 处理新增的数据
+            if (args.ChangeDetails.AddedRows.Count > 0)
+            {
+                await ProcessData(args.ChangeDetails.AddedRows);
+                Console.WriteLine($"已处理 {args.ChangeDetails.AddedRows.Count} 条新增记录");
+            }
+            
+            // 处理修改的数据
+            if (args.ChangeDetails.ModifiedRows.Count > 0)
+            {
+                await ProcessModifiedData(args.ChangeDetails.ModifiedRows);
+                Console.WriteLine($"已处理 {args.ChangeDetails.ModifiedRows.Count} 条修改记录");
+            }
+        }
+    }
+
+    private async Task HandleFileDeleted(FileChangedEventArgs args)
+    {
+        Console.WriteLine($"文件被删除: {Path.GetFileName(args.FilePath)}");
+        
+        if (args.ChangeDetails?.DeletedRows.Count > 0)
+        {
+            // 处理删除的数据
+            await LogDeletedData(args.ChangeDetails.DeletedRows);
+        }
+    }
+
+    private async Task ProcessData(List<Dictionary<string, object>> data)
+    {
+        // 实现您的数据处理逻辑
+        await Task.Run(() => {
+            foreach (var row in data)
+            {
+                // 示例：打印数据内容
+                Console.WriteLine($"处理数据行:");
+                foreach (var column in row)
+                {
+                    Console.WriteLine($"  {column.Key}: {column.Value}");
+                }
+            }
+        });
+    }
+
+    private async Task ProcessModifiedData(List<RowChange> changes)
+    {
+        // 实现修改数据的处理逻辑
+        foreach (var change in changes)
+        {
+            Console.WriteLine($"处理第 {change.RowIndex + 1} 行的修改:");
+            foreach (var fieldChange in change.FieldChanges)
+            {
+                Console.WriteLine($"  {fieldChange.FieldName}: {fieldChange.OldValue} -> {fieldChange.NewValue}");
+            }
+        }
+        await Task.CompletedTask;
+    }
+
+    private async Task LogDeletedData(List<Dictionary<string, object>> deletedData)
+    {
+        // 记录删除的数据
+        Console.WriteLine($"记录 {deletedData.Count} 条删除的数据");
+        await Task.CompletedTask;
     }
 }
 
-// 注册处理器
-manager.AddHandler(new DatabaseHandler());
+// 注册自定义处理器
+manager.AddHandler(new FileChangeHandler());
+
 ```
 
 ## 配置说明
@@ -350,12 +718,40 @@ MIT License - 查看 [LICENSE](LICENSE) 文件
 
 ## 更新日志
 
+### v2.0.0 (当前版本)
+
+#### 🚀 重大功能增强
+- **智能内容变化分析**：新增详细的文件内容差异检测
+- **临时文件缓存策略**：使用 `.watchfile` 文件存储历史快照，优化内存使用
+- **工控环境优化**：专为大量小文件监控场景设计
+- **排除模式支持**：智能排除临时文件、备份文件等不需要监控的文件
+
+#### 📊 数据变化分析
+- 行级差异检测：精确识别新增、删除、修改的数据行
+- 字段级变化跟踪：显示具体字段的 `旧值 → 新值` 变化
+- 变化摘要报告：提供清晰的变化统计信息
+- 实时差异日志：可选的详细变化记录
+
+#### ⚙️ 配置增强
+- 新增 `excludePatterns` 配置项：支持通配符排除模式
+- 新增 `watchFileSettings` 配置组：临时文件管理设置
+- 并发控制：可配置最大同时处理文件数（默认16个）
+- 异常处理策略：临时文件丢失时的自动恢复机制
+
+#### 🔧 技术改进
+- 将 JSON 库统一为 Newtonsoft.Json（解决安全警告）
+- 性能优化：减少内存占用，提高大量文件处理效率
+- 兼容性增强：更好的 .NET Framework 4.6.1 支持
+- 错误处理：更完善的异常信息和恢复机制
+
 ### v1.0.0
-- 初始版本
+
+#### 🎯 初始功能
 - 支持 CSV 和 Excel 文件监控
 - 基于配置文件的监控规则
 - 异步事件通知
 - 列映射和数据转换
+- 多目标框架支持（.NET Framework 4.6.1+ 和 .NET 6+）
 
 ## 支持
 
