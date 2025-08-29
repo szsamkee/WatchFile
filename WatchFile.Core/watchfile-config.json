@@ -1,0 +1,143 @@
+{
+  "version": "1.0",
+  "globalSettings": {
+    "enableLogging": true,
+    "logLevel": "Info",
+    "bufferTimeMs": 500,
+    "maxRetries": 3,
+    "logFilePath": "logs/watchfile.log"
+  },
+  "watchItems": [
+    {
+      "id": "sales-data-monitor",
+      "name": "销售数据监控",
+      "enabled": true,
+      "path": "D:\\Data\\Sales",
+      "type": "Directory",
+      "recursive": true,
+      "fileFilters": ["*.csv", "*.xlsx"],
+      "watchEvents": ["Created", "Modified"],
+      "fileSettings": {
+        "fileType": "CSV",
+        "hasHeader": true,
+        "delimiter": ",",
+        "encoding": "UTF-8",
+        "columnMappings": [
+          {
+            "sourceColumn": "产品名称",
+            "targetName": "ProductName",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "销售额",
+            "targetName": "SalesAmount",
+            "dataType": "Decimal",
+            "required": true
+          },
+          {
+            "sourceColumn": "日期",
+            "targetName": "SalesDate",
+            "dataType": "DateTime",
+            "required": true,
+            "format": "yyyy-MM-dd"
+          },
+          {
+            "sourceColumn": "备注",
+            "targetName": "Remarks",
+            "dataType": "String",
+            "required": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "inventory-file-monitor",
+      "name": "库存文件监控",
+      "enabled": true,
+      "path": "D:\\Data\\inventory.xlsx",
+      "type": "File",
+      "watchEvents": ["Modified"],
+      "fileSettings": {
+        "fileType": "Excel",
+        "sheetName": "Sheet1",
+        "hasHeader": false,
+        "startRow": 2,
+        "columnMappings": [
+          {
+            "sourceColumn": 0,
+            "targetName": "ItemCode",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": 1,
+            "targetName": "ItemName",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": 2,
+            "targetName": "Quantity",
+            "dataType": "Integer",
+            "required": true
+          },
+          {
+            "sourceColumn": 3,
+            "targetName": "UpdateTime",
+            "dataType": "DateTime",
+            "required": false,
+            "format": "yyyy-MM-dd HH:mm:ss"
+          }
+        ]
+      }
+    },
+    {
+      "id": "employee-csv-monitor",
+      "name": "员工信息CSV监控",
+      "enabled": false,
+      "path": "D:\\HR\\employee.csv",
+      "type": "File",
+      "watchEvents": ["Created", "Modified", "Deleted"],
+      "fileSettings": {
+        "fileType": "CSV",
+        "hasHeader": true,
+        "delimiter": "\t",
+        "encoding": "GBK",
+        "columnMappings": [
+          {
+            "sourceColumn": "员工编号",
+            "targetName": "EmployeeId",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "姓名",
+            "targetName": "Name",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "部门",
+            "targetName": "Department",
+            "dataType": "String",
+            "required": false
+          },
+          {
+            "sourceColumn": "工资",
+            "targetName": "Salary",
+            "dataType": "Decimal",
+            "required": false
+          },
+          {
+            "sourceColumn": "入职日期",
+            "targetName": "HireDate",
+            "dataType": "DateTime",
+            "required": false,
+            "format": "yyyy/MM/dd"
+          }
+        ]
+      }
+    }
+  ]
+}

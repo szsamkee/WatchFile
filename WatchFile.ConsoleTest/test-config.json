@@ -1,0 +1,101 @@
+{
+  "version": "1.0",
+  "globalSettings": {
+    "enableLogging": true,
+    "logLevel": "Info",
+    "bufferTimeMs": 500,
+    "maxRetries": 3,
+    "logFilePath": "logs/watchfile.log"
+  },
+  "watchItems": [
+    {
+      "id": "test-csv-monitor",
+      "name": "测试CSV文件监控",
+      "enabled": true,
+      "path": "TestData",
+      "type": "Directory",
+      "recursive": false,
+      "fileFilters": ["*.csv"],
+      "watchEvents": ["Created", "Modified"],
+      "fileSettings": {
+        "fileType": "CSV",
+        "hasHeader": true,
+        "delimiter": ",",
+        "encoding": "UTF-8",
+        "columnMappings": [
+          {
+            "sourceColumn": "Name",
+            "targetName": "EmployeeName",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "Age",
+            "targetName": "Age",
+            "dataType": "Integer",
+            "required": false
+          },
+          {
+            "sourceColumn": "Email",
+            "targetName": "Email",
+            "dataType": "String",
+            "required": false
+          },
+          {
+            "sourceColumn": "Department",
+            "targetName": "Department",
+            "dataType": "String",
+            "required": false
+          },
+          {
+            "sourceColumn": "Salary",
+            "targetName": "Salary",
+            "dataType": "Decimal",
+            "required": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "sales-tab-monitor",
+      "name": "销售数据Tab分割监控",
+      "enabled": false,
+      "path": "TestData\\sales.csv",
+      "type": "File",
+      "watchEvents": ["Modified"],
+      "fileSettings": {
+        "fileType": "CSV",
+        "hasHeader": true,
+        "delimiter": "\t",
+        "encoding": "UTF-8",
+        "columnMappings": [
+          {
+            "sourceColumn": "产品名称",
+            "targetName": "ProductName",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "销售额",
+            "targetName": "SalesAmount",
+            "dataType": "Decimal",
+            "required": true
+          },
+          {
+            "sourceColumn": "日期",
+            "targetName": "SalesDate",
+            "dataType": "DateTime",
+            "required": true,
+            "format": "yyyy-MM-dd"
+          },
+          {
+            "sourceColumn": "销售员",
+            "targetName": "Salesperson",
+            "dataType": "String",
+            "required": false
+          }
+        ]
+      }
+    }
+  ]
+}
