@@ -497,5 +497,129 @@ namespace WatchFile.Core.Monitoring
                 // 忽略日志记录错误
             }
         }
+
+        /// <summary>
+        /// 触发自动删除（配置驱动）
+        /// </summary>
+        public async Task TriggerAutoDeleteAsync(string fileName, string watchItemId)
+        {
+            try
+            {
+                Console.WriteLine($"[AUTO DELETE] 开始自动删除文件: {fileName}");
+                
+                // 构建完整文件路径
+                // _config.Path 本身就是监控目录，直接使用
+                var directoryPath = _config.Path;
+                if (string.IsNullOrEmpty(directoryPath))
+                {
+                    Console.WriteLine($"[AUTO DELETE] 错误: 监控目录路径为空");
+                    return;
+                }
+                
+                var filePath = Path.Combine(directoryPath, fileName);
+                
+                // 检查文件是否存在
+                if (!File.Exists(filePath))
+                {
+                    Console.WriteLine($"[AUTO DELETE] 文件不存在: {filePath}");
+                    return;
+                }
+                
+                // 等待一段时间确保文件处理完成
+                await Task.Delay(1000);
+                
+                // 🔧 强制垃圾回收，确保文件句柄释放
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                
+                // 🔧 使用强制删除（清除只读属性）
+                ForceDeleteFile(filePath);
+                
+                Console.WriteLine($"[AUTO DELETE] 主文件删除成功: {fileName}");
+                
+                // 删除对应的缓存文件
+                await DeleteCacheFileIfExists(fileName);
+                
+                Console.WriteLine($"[AUTO DELETE] 自动删除完成: {fileName}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AUTO DELETE] 自动删除失败: {fileName}");
+                Console.WriteLine($"[AUTO DELETE] 错误: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 强制删除文件（清除只读属性后删除）
+        /// </summary>
+        private static void ForceDeleteFile(string filePath)
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                    return;
+                    
+                // 🔧 清除只读、隐藏、系统属性
+                var attributes = File.GetAttributes(filePath);
+                var originalAttributes = attributes;
+                
+                // 移除可能阻止删除的属性
+                attributes &= ~FileAttributes.ReadOnly;
+                attributes &= ~FileAttributes.Hidden;
+                attributes &= ~FileAttributes.System;
+                
+                // 只有当属性发生变化时才设置
+                if (attributes != originalAttributes)
+                {
+                    File.SetAttributes(filePath, attributes);
+                    Console.WriteLine($"[AUTO DELETE] 已清除文件属性: {Path.GetFileName(filePath)}");
+                }
+                
+                // 删除文件
+                File.Delete(filePath);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"无法删除文件 '{filePath}': {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 删除缓存文件（如果存在）
+        /// </summary>
+        private async Task DeleteCacheFileIfExists(string fileName)
+        {
+            try
+            {
+                var cacheFilePath = Path.Combine(_watchDirectory, fileName + _config.WatchFileSettings.WatchFileExtension);
+                
+                if (File.Exists(cacheFilePath))
+                {
+                    ForceDeleteFile(cacheFilePath);
+                    Console.WriteLine($"[AUTO DELETE] 缓存文件删除成功: {Path.GetFileName(cacheFilePath)}");
+                }
+                
+                // 尝试删除空的缓存目录
+                if (Directory.Exists(_watchDirectory) && !Directory.GetFiles(_watchDirectory).Any())
+                {
+                    try
+                    {
+                        Directory.Delete(_watchDirectory);
+                        Console.WriteLine($"[AUTO DELETE] 已清理空缓存目录: {_config.WatchFileSettings.WatchFileDirectory}");
+                    }
+                    catch
+                    {
+                        // 静默忽略删除空目录的错误
+                    }
+                }
+                
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AUTO DELETE] 缓存文件删除警告: {ex.Message}");
+            }
+        }
     }
 }

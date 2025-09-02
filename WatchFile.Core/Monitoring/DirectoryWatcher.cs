@@ -350,7 +350,11 @@ namespace WatchFile.Core.Monitoring
                     }
                 }
 
+                // 触发文件变化事件
                 OnFileChanged(args);
+                
+                // 🚀 新增：自动删除处理
+                await HandleAutoDeleteIfEnabled(args, filePath);
             }
             catch (Exception ex)
             {
@@ -359,6 +363,42 @@ namespace WatchFile.Core.Monitoring
                 OnFileChanged(args);
                 
                 // 不要重新抛出异常，避免影响监控器的运行状态
+            }
+        }
+
+        /// <summary>
+        /// 处理自动删除功能（如果配置启用）
+        /// </summary>
+        private async Task HandleAutoDeleteIfEnabled(FileChangedEventArgs args, string filePath)
+        {
+            try
+            {
+                // 检查配置是否启用自动删除
+                if (!_config.DeleteAfterProcessing)
+                    return;
+
+                // 只对成功处理的创建和修改事件执行删除
+                if (!args.IsSuccess || 
+                    (args.ChangeType != WatcherChangeTypes.Created && args.ChangeType != WatcherChangeTypes.Changed))
+                    return;
+
+                // 确保文件仍然存在
+                if (!File.Exists(filePath))
+                    return;
+
+                Console.WriteLine($"[AUTO DELETE] 检测到配置启用自动删除，开始处理文件: {Path.GetFileName(filePath)}");
+
+                // 等待一段时间确保文件处理完成
+                await Task.Delay(1000);
+
+                // 调用 WatchFileManager 的内部删除方法
+                var fileName = Path.GetFileName(filePath);
+                await _watchFileManager.TriggerAutoDeleteAsync(fileName, _config.Id);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AUTO DELETE] 自动删除处理异常: {ex.Message}");
+                // 不要重新抛出异常，避免影响监控器运行
             }
         }
 
@@ -415,6 +455,7 @@ namespace WatchFile.Core.Monitoring
             _bufferTimer?.Dispose();
             _disposed = true;
         }
+
     }
 
     // 扩展方法用于安全调用

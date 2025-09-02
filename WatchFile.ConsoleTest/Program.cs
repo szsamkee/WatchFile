@@ -29,11 +29,11 @@ namespace WatchFile.ConsoleTest
             Console.InputEncoding = Encoding.UTF8;
             
             Console.WriteLine("=== WatchFile 智能监控程序 ===");
-            Console.WriteLine("版本: 2.2.0");
+            Console.WriteLine("版本: 2.3.0");
             Console.WriteLine("支持: .NET Framework 4.6.1+ 和 .NET 6+");
             Console.WriteLine("功能: CSV/Excel 文件智能变化分析");
             Console.WriteLine("优化: 工控环境大量小文件监控");
-            Console.WriteLine("特色: 临时文件缓存 + 详细差异分析");
+            Console.WriteLine("特色: 临时文件缓存 + 详细差异分析 + 配置驱动自动删除");
             Console.WriteLine($"🧪 测试: 安全删除功能 ({(_enableSafeDeleteTest ? "已启用" : "已禁用")})");
             Console.WriteLine();
 
@@ -301,84 +301,51 @@ namespace WatchFile.ConsoleTest
         }
 
         /// <summary>
-        /// 测试安全删除功能
+        /// 测试安全删除功能（现在改为配置驱动的自动删除）
         /// </summary>
-        private static async Task TestSafeFileDelete(FileChangedEventArgs e)
+        private static Task TestSafeFileDelete(FileChangedEventArgs e)
         {
+            // 🔄 重新设计：不再手动调用删除API
+            // 删除功能现在完全由配置 DeleteAfterProcessing 驱动
+            
             // 检查是否启用安全删除测试
             if (!_enableSafeDeleteTest)
             {
-                return;
+                return Task.CompletedTask;
             }
 
-            // 只对成功处理的新建和修改文件进行删除测试
+            // 只对成功处理的新建和修改文件显示信息
             if (!e.IsSuccess || e.ChangeType == System.IO.WatcherChangeTypes.Deleted)
             {
-                return;
+                return Task.CompletedTask;
             }
 
             // 跳过已经被删除的文件
             if (!File.Exists(e.FilePath))
             {
-                return;
+                return Task.CompletedTask;
             }
 
             try
             {
-                Console.WriteLine("\n🧪 === 安全删除测试 ===");
-                Console.WriteLine($"📝 模拟场景: 文件 '{Path.GetFileName(e.FilePath)}' 已处理完成，现在进行安全删除");
-                Console.WriteLine($"⏱️  等待 {_deleteDelaySeconds} 秒模拟文件处理时间...");
-                
-                // 模拟文件处理时间
-                await Task.Delay(_deleteDelaySeconds * 1000);
-
-                Console.WriteLine("🗑️  开始执行安全删除...");
-                
-                // 调用新的安全删除 API - 按文件名删除，启用强制删除（清除只读属性）
-                var fileName = Path.GetFileName(e.FilePath);
-                var deleteResult = await _manager!.SafeDeleteFileAsync(fileName, e.WatchItemId, forceDelete: true);
-
-                // 显示删除结果
-                Console.WriteLine("\n📊 === 删除结果报告 ===");
-                Console.WriteLine($"✅ 删除状态: {(deleteResult.IsSuccess ? "成功" : "失败")}");
-                Console.WriteLine($"🎯 目标文件: {deleteResult.FileName}");
-                Console.WriteLine($"🔍 监控项ID: {deleteResult.RequestedWatchItemId}");
-                Console.WriteLine($"⏱️  处理耗时: {deleteResult.Duration.TotalMilliseconds:F0} 毫秒");
-
-                if (deleteResult.IsSuccess)
-                {
-                    Console.WriteLine($"📁 已删除主文件: {deleteResult.DeletedFiles.Count} 个");
-                    Console.WriteLine($"🗂️  已删除缓存文件: {deleteResult.DeletedCacheFiles.Count} 个");
-                    
-                    if (deleteResult.Messages.Any())
-                    {
-                        Console.WriteLine("\n📋 详细信息:");
-                        foreach (var message in deleteResult.Messages)
-                        {
-                            Console.WriteLine($"   {message}");
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("❌ 删除失败:");
-                    foreach (var error in deleteResult.Errors)
-                    {
-                        Console.WriteLine($"   ⚠️  {error}");
-                    }
-                }
-
-                Console.WriteLine("🎉 === 安全删除测试完成 ===\n");
+                Console.WriteLine("\n🧪 === 自动删除提示 ===");
+                Console.WriteLine($"📝 文件 '{Path.GetFileName(e.FilePath)}' 已处理完成");
+                Console.WriteLine($"⚙️  如果配置中 DeleteAfterProcessing=true，文件将自动删除");
+                Console.WriteLine($"🔧 当前测试模式：{(_enableSafeDeleteTest ? "启用" : "禁用")} (仅影响此提示显示)");
+                Console.WriteLine("� 要启用自动删除，请在配置文件中设置 \"DeleteAfterProcessing\": true");
+                Console.WriteLine("🎉 === 配置驱动的自动删除更安全、更便捷 ===\n");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n❌ [安全删除测试错误] {ex.Message}");
+                Console.WriteLine($"\n❌ [自动删除提示错误] {ex.Message}");
                 if (ex.InnerException != null)
                 {
                     Console.WriteLine($"   [内部错误] {ex.InnerException.Message}");
                 }
                 Console.WriteLine();
             }
+
+            return Task.CompletedTask;
         }
 
         private static void OnStatusChanged(object? sender, MonitorStatusChangedEventArgs e)

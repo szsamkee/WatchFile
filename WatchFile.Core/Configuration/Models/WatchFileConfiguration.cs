@@ -114,6 +114,12 @@ namespace WatchFile.Core.Configuration.Models
         /// 监控文件管理设置
         /// </summary>
         public WatchFileSettings WatchFileSettings { get; set; } = new WatchFileSettings();
+        
+        /// <summary>
+        /// 是否在文件处理完成后自动删除
+        /// 警告：启用此选项将导致文件被永久删除，请谨慎使用
+        /// </summary>
+        public bool DeleteAfterProcessing { get; set; } = false;
     }
 
     /// <summary>
