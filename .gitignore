@@ -328,3 +328,8 @@ MigrationBackup/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# API Keys and sensitive files
+NuGet.apikey
+*.apikey
+apikey.txt

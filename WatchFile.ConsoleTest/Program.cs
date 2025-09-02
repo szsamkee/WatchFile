@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using WatchFile.Core;
 using WatchFile.Core.Events;
+using WatchFile.Core.Configuration;
 using WatchFile.Core.Configuration.Models;
 
 namespace WatchFile.ConsoleTest
@@ -47,6 +48,73 @@ namespace WatchFile.ConsoleTest
 
                 // 创建管理器
                 _manager = new WatchFileManager(configPath);
+
+                // 🧪 测试新的静态方法 LoadAndValidateConfiguration
+                Console.WriteLine("=== 测试 LoadAndValidateConfiguration 静态方法 ===");
+                Console.WriteLine("测试 v2.1.0 新增的一次性配置加载和校验方法...");
+                
+                try
+                {
+                    var (isValid, config, errorMessage) = ConfigurationManager.LoadAndValidateConfiguration(configPath);
+                    
+                    if (isValid && config != null)
+                    {
+                        Console.WriteLine($"✅ 静态方法成功加载配置: {config.WatchItems.Count} 个监控项");
+                        Console.WriteLine($"   版本: {config.Version}");
+                        Console.WriteLine($"   全局设置 - 日志级别: {config.GlobalSettings.LogLevel}");
+                        Console.WriteLine($"   全局设置 - 缓冲时间: {config.GlobalSettings.BufferTimeMs}ms");
+                        
+                        foreach (var item in config.WatchItems)
+                        {
+                            Console.WriteLine($"   • {item.Name} ({item.Id}) - {(item.Enabled ? "启用" : "禁用")}");
+                            Console.WriteLine($"     路径: {item.Path} | 类型: {item.FileSettings.FileType}");
+                        }
+                        
+                        Console.WriteLine("🎉 LoadAndValidateConfiguration 方法工作正常！");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ 静态方法校验失败: {errorMessage}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ 静态方法调用异常: {ex.Message}");
+                }
+                
+                Console.WriteLine("按任意键继续测试 GetAllWatchItems...");
+                Console.ReadKey();
+                Console.WriteLine();
+
+                // 🧪 测试：在 StartAsync() 之前获取监控项信息
+                Console.WriteLine("=== 测试 GetAllWatchItems (StartAsync 之前) ===");
+                Console.WriteLine("正在测试修复后的 GetAllWatchItems 方法...");
+                
+                try
+                {
+                    var watchItems = _manager.GetAllWatchItems();
+                    Console.WriteLine($"✅ 成功获取到 {watchItems.Count} 个监控项配置：");
+                    
+                    foreach (var item in watchItems)
+                    {
+                        var status = item.Enabled ? "启用" : "禁用";
+                        var type = item.Type == WatchType.Directory ? "目录" : "文件";
+                        Console.WriteLine($"   • [{status}] {item.Name} ({item.Id})");
+                        Console.WriteLine($"     类型: {type} | 路径: {item.Path}");
+                        Console.WriteLine($"     文件类型: {item.FileSettings.FileType} | 过滤器: {string.Join(", ", item.FileFilters)}");
+                        Console.WriteLine();
+                    }
+                    
+                    Console.WriteLine("🎉 修复验证成功！GetAllWatchItems 在 StartAsync 之前可以正常工作！");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ 测试失败: {ex.Message}");
+                }
+                
+                Console.WriteLine("按任意键继续启动监控...");
+                Console.ReadKey();
+                Console.WriteLine();
 
                 // 注册事件处理器
                 _manager.FileChanged += OnFileChanged;

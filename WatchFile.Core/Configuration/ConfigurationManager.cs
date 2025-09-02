@@ -137,15 +137,10 @@ namespace WatchFile.Core.Configuration
             if (string.IsNullOrWhiteSpace(item.Path))
                 throw new InvalidOperationException($"监控项 {item.Id} 的路径不能为空");
 
-            if (item.Type == WatchType.Directory && !Directory.Exists(item.Path))
-                throw new InvalidOperationException($"监控目录不存在: {item.Path}");
-
-            if (item.Type == WatchType.File)
-            {
-                var directory = Path.GetDirectoryName(item.Path);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                    throw new InvalidOperationException($"文件所在目录不存在: {directory}");
-            }
+            // 注意：此处不再验证路径是否存在，因为：
+            // 1. GetAllWatchItems() 应该返回所有配置项，无论路径是否存在
+            // 2. 路径验证应该在启动监控时进行，而不是在加载配置时
+            // 3. 用户应该能看到所有配置的监控项，包括有问题的项
 
             if (item.WatchEvents == null || item.WatchEvents.Count == 0)
                 throw new InvalidOperationException($"监控项 {item.Id} 必须指定至少一个监控事件");
@@ -225,6 +220,140 @@ namespace WatchFile.Core.Configuration
                     }
                 }
             };
+        }
+
+        /// <summary>
+        /// 静态方法：校验配置文件合法性
+        /// </summary>
+        /// <param name="configPath">配置文件路径</param>
+        /// <returns>返回校验结果，true表示有效，false表示无效</returns>
+        public static bool ValidateConfigurationFile(string configPath)
+        {
+            try
+            {
+                var tempManager = new ConfigurationManager(configPath);
+                var config = tempManager.LoadConfiguration();
+                return tempManager.ValidateConfiguration(config);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 静态方法：校验配置对象合法性
+        /// </summary>
+        /// <param name="config">配置对象</param>
+        /// <returns>返回校验结果，true表示有效，false表示无效</returns>
+        public static bool ValidateConfigurationObject(WatchFileConfiguration config)
+        {
+            try
+            {
+                return new ConfigurationManager().ValidateConfiguration(config);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 静态方法：校验配置文件并返回详细错误信息
+        /// </summary>
+        /// <param name="configPath">配置文件路径</param>
+        /// <returns>返回校验结果和错误信息</returns>
+        public static (bool IsValid, string ErrorMessage) ValidateConfigurationFileWithDetails(string configPath)
+        {
+            try
+            {
+                if (!File.Exists(configPath))
+                {
+                    return (false, $"配置文件不存在: {configPath}");
+                }
+
+                var tempManager = new ConfigurationManager(configPath);
+                var config = tempManager.LoadConfiguration();
+                tempManager.ValidateConfiguration(config);
+                
+                return (true, string.Empty);
+            }
+            catch (FileNotFoundException ex)
+            {
+                return (false, $"配置文件不存在: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return (false, $"配置验证失败: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"配置解析失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 静态方法：校验配置对象并返回详细错误信息
+        /// </summary>
+        /// <param name="config">配置对象</param>
+        /// <returns>返回校验结果和错误信息</returns>
+        public static (bool IsValid, string ErrorMessage) ValidateConfigurationObjectWithDetails(WatchFileConfiguration config)
+        {
+            try
+            {
+                new ConfigurationManager().ValidateConfiguration(config);
+                return (true, string.Empty);
+            }
+            catch (ArgumentNullException ex)
+            {
+                return (false, $"配置对象为空: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return (false, $"配置验证失败: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"配置验证错误: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 静态方法：加载并校验配置文件，返回配置对象（推荐使用）
+        /// </summary>
+        /// <param name="configPath">配置文件路径</param>
+        /// <returns>返回校验结果、配置对象和错误信息</returns>
+        public static (bool IsValid, WatchFileConfiguration? Config, string ErrorMessage) LoadAndValidateConfiguration(string configPath)
+        {
+            try
+            {
+                if (!File.Exists(configPath))
+                {
+                    return (false, null, $"配置文件不存在: {configPath}");
+                }
+
+                var tempManager = new ConfigurationManager(configPath);
+                var config = tempManager.LoadConfiguration();
+                tempManager.ValidateConfiguration(config);
+                
+                return (true, config, string.Empty);
+            }
+            catch (FileNotFoundException ex)
+            {
+                return (false, null, $"配置文件不存在: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return (false, null, $"配置验证失败: {ex.Message}");
+            }
+            catch (ArgumentNullException ex)
+            {
+                return (false, null, $"配置对象为空: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, $"配置解析失败: {ex.Message}");
+            }
         }
     }
 }

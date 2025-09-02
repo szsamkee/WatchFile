@@ -9,8 +9,8 @@
   },
   "watchItems": [
     {
-      "id": "test-csv-monitor",
-      "name": "测试CSV文件监控",
+      "id": "csv-monitor",
+      "name": "CSV文件监控",
       "enabled": true,
       "path": "TestData",
       "type": "Directory",
@@ -22,7 +22,7 @@
         "fileType": "CSV",
         "hasHeader": false,
         "delimiter": ",",
-        "encoding": "UTF-8",
+        "encoding": "GB2312",
         "columnMappings": [
           {
             "sourceColumn": "测试结果",
@@ -46,6 +46,45 @@
         "maxConcurrentFiles": 16,
         "throwOnMissingWatchFile": false,
         "enableDifferenceLogging": true,
+        "differenceLogPath": "logs/differences.log"
+      }
+    },
+    {
+      "id": "invalid-path-monitor",
+      "name": "不存在路径的监控项",
+      "enabled": false,
+      "path": "NonExistentDirectory",
+      "type": "Directory",
+      "recursive": false,
+      "fileFilters": ["*.csv"],
+      "excludePatterns": ["*.watchfile", "*.tmp", "*_backup_*"],
+      "watchEvents": ["Created", "Modified"],
+      "fileSettings": {
+        "fileType": "CSV",
+        "hasHeader": true,
+        "delimiter": ",",
+        "encoding": "UTF-8",
+        "columnMappings": [
+          {
+            "sourceColumn": "Name",
+            "targetName": "EmployeeName",
+            "dataType": "String",
+            "required": true
+          },
+          {
+            "sourceColumn": "Age",
+            "targetName": "Age",
+            "dataType": "Integer",
+            "required": false
+          }
+        ]
+      },
+      "watchFileSettings": {
+        "watchFileDirectory": ".watch",
+        "watchFileExtension": ".watchfile",
+        "maxConcurrentFiles": 8,
+        "throwOnMissingWatchFile": false,
+        "enableDifferenceLogging": false,
         "differenceLogPath": "logs/differences.log"
       }
     },

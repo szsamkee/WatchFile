@@ -39,22 +39,34 @@ namespace WatchFile.Core.Monitoring
             {
                 if (_config.Type == WatchType.Directory)
                 {
-                    _watcher = new FileSystemWatcher(_config.Path)
+                    // 注意：不在构造函数中验证路径是否存在
+                    // 路径验证在 StartAsync() 时进行
+                    // 这样 GetAllWatchItems() 能返回所有配置项，包括路径有问题的项
+                    try
                     {
-                        IncludeSubdirectories = _config.Recursive,
-                        NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite | NotifyFilters.FileName
-                    };
+                        _watcher = new FileSystemWatcher(_config.Path)
+                        {
+                            IncludeSubdirectories = _config.Recursive,
+                            NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite | NotifyFilters.FileName
+                        };
 
-                    // 设置文件过滤器
-                    if (_config.FileFilters.Any())
-                    {
-                        _watcher.Filter = "*.*"; // 监控所有文件，在事件中过滤
+                        // 设置文件过滤器
+                        if (_config.FileFilters.Any())
+                        {
+                            _watcher.Filter = "*.*"; // 监控所有文件，在事件中过滤
+                        }
+
+                        _watcher.Created += OnFileSystemEvent;
+                        _watcher.Changed += OnFileSystemEvent;
+                        _watcher.Deleted += OnFileSystemEvent;
+                        _watcher.Renamed += OnFileSystemRenamed;
                     }
-
-                    _watcher.Created += OnFileSystemEvent;
-                    _watcher.Changed += OnFileSystemEvent;
-                    _watcher.Deleted += OnFileSystemEvent;
-                    _watcher.Renamed += OnFileSystemRenamed;
+                    catch (ArgumentException)
+                    {
+                        // 如果路径无效，_watcher 保持为 null
+                        // 在 StartAsync() 时会进行验证并抛出更友好的异常
+                        _watcher = null;
+                    }
                 }
 
                 // 创建缓冲计时器
@@ -81,6 +93,21 @@ namespace WatchFile.Core.Monitoring
             try
             {
                 UpdateStatus(MonitorStatus.Starting, "正在启动监控");
+
+                // 在启动时验证路径是否存在
+                if (_config.Type == WatchType.Directory && !Directory.Exists(_config.Path))
+                {
+                    throw new DirectoryNotFoundException($"监控目录不存在: {_config.Path}");
+                }
+
+                if (_config.Type == WatchType.File)
+                {
+                    var directory = Path.GetDirectoryName(_config.Path);
+                    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                    {
+                        throw new DirectoryNotFoundException($"文件所在目录不存在: {directory}");
+                    }
+                }
 
                 // 初始化临时文件
                 await _watchFileManager.InitializeWatchFilesAsync();

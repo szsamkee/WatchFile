@@ -4,15 +4,61 @@
     <TargetFrameworks>net461;net6.0</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    
+    <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.0.0</PackageVersion>
-    <Authors>Your Name</Authors>
-    <Description>A cross-platform intelligent file monitoring library with advanced content change analysis. Specially optimized for industrial environments with thousands of small files. Supports CSV and Excel files with detailed diff tracking, temporary file caching, and configurable column mapping.</Description>
-    <PackageTags>file;monitoring;csv;excel;filewatcher;industrial;content-analysis;diff-tracking</PackageTags>
-    <RepositoryUrl>https://github.com/yourusername/WatchFile</RepositoryUrl>
+    <PackageVersion>2.1.1</PackageVersion>
+    <Authors>不会写又爱写代码的老祁</Authors>
+    <Company>老祁个人工作室</Company>
+    <Product>WatchFile</Product>
+    <Description>智能文件监控与内容变化分析库，专为工控环境设计，支持CSV/Excel文件的详细差异分析。A cross-platform intelligent file monitoring library with advanced content change analysis, specially optimized for industrial environments.</Description>
+    <Summary>高性能文件监控库，提供详细的内容变化分析</Summary>
+    <PackageTags>file-monitoring;csv;excel;change-detection;industrial;dotnet;filewatcher;content-analysis;diff-tracking</PackageTags>
+    <PackageProjectUrl>https://github.com/szsamkee/WatchFile</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/szsamkee/WatchFile</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Copyright>Copyright © 2024 老祁个人工作室</Copyright>
+    <PackageReleaseNotes>
+      v2.1.1:
+      - 重要修复：GetAllWatchItems现在返回所有配置项，包括路径不存在的项
+      - 改进：将路径验证从配置加载阶段移至监控启动阶段
+      - 增强：用户现在可以看到完整的配置列表，便于识别有问题的监控项
+      - 优化：在启动监控时提供更友好的路径错误提示
+      
+      v2.1.0:
+      - 新增静态配置校验方法：ValidateConfigurationFile, ValidateConfigurationObject
+      - 新增LoadAndValidateConfiguration方法：一次调用完成配置校验和加载
+      - 修复GetAllWatchItems在StartAsync之前调用返回空列表的问题
+      - 改进配置管理器，支持在构造函数中加载配置
+      - 增强API文档和使用示例
+      
+      v2.0.0:
+      - 支持详细的文件内容变化分析
+      - 优化工控环境大量小文件监控
+      - 临时文件缓存机制
+      - 支持 .NET Framework 4.6.1+ 和 .NET 6+
+      - CSV/Excel 文件智能差异检测
+      - 可配置的列映射和数据类型转换
+    </PackageReleaseNotes>
+    
+    <!-- 包含符号文件用于调试 -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    
+    <!-- 生成文档 XML -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    
+    <!-- 将 API.md 作为 NuGet README -->
+    <PackageReadmeFile>API.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 包含 API.md 文件到 NuGet 包中 -->
+    <None Include="API.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="NPOI" Version="2.6.2" />

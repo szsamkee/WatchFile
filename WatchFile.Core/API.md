@@ -161,6 +161,31 @@ public static WatchFileConfiguration CreateDefaultConfiguration()
 ```
 创建默认配置。
 
+```csharp
+public static bool ValidateConfigurationFile(string configPath)
+```
+静态方法：校验配置文件合法性，返回布尔值。
+
+```csharp
+public static bool ValidateConfigurationObject(WatchFileConfiguration config)
+```
+静态方法：校验配置对象合法性，返回布尔值。
+
+```csharp
+public static (bool IsValid, string ErrorMessage) ValidateConfigurationFileWithDetails(string configPath)
+```
+静态方法：校验配置文件并返回详细错误信息。
+
+```csharp
+public static (bool IsValid, string ErrorMessage) ValidateConfigurationObjectWithDetails(WatchFileConfiguration config)
+```
+静态方法：校验配置对象并返回详细错误信息。
+
+```csharp
+public static (bool IsValid, WatchFileConfiguration? Config, string ErrorMessage) LoadAndValidateConfiguration(string configPath)
+```
+静态方法：加载并校验配置文件，返回配置对象（推荐使用）。一次调用完成配置文件校验和配置对象获取。
+
 ### FileParser
 
 静态文件解析器。
@@ -605,6 +630,37 @@ public class MyHandler : FileChangedHandlerBase
 }
 
 manager.AddHandler(new MyHandler());
+```
+
+### 配置文件校验和加载（v2.1+）
+
+```csharp
+// 推荐：一次调用完成校验和加载
+var (isValid, config, errorMessage) = ConfigurationManager.LoadAndValidateConfiguration("config.json");
+
+if (isValid && config != null)
+{
+    Console.WriteLine("✅ 配置文件有效");
+    
+    // 直接使用配置对象，无需创建监控实例
+    Console.WriteLine($"监控项总数: {config.WatchItems.Count}");
+    Console.WriteLine($"启用的监控项: {config.WatchItems.Count(w => w.Enabled)}");
+    Console.WriteLine($"全局设置 - 日志级别: {config.GlobalSettings.LogLevel}");
+    
+    // 分析监控项
+    foreach (var item in config.WatchItems.Where(w => w.Enabled))
+    {
+        Console.WriteLine($"- {item.Name}: {item.Path} ({item.FileSettings.FileType})");
+    }
+}
+else
+{
+    Console.WriteLine($"❌ 配置文件无效: {errorMessage}");
+}
+
+// 其他静态校验方法
+bool isValidSimple = ConfigurationManager.ValidateConfigurationFile("config.json");
+var (valid, error) = ConfigurationManager.ValidateConfigurationFileWithDetails("config.json");
 ```
 
 ### 动态管理监控项

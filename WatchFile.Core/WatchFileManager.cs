@@ -43,6 +43,18 @@ namespace WatchFile.Core
         public WatchFileManager(string? configPath = null)
         {
             _configManager = new ConfigurationManager(configPath);
+            
+            // 立即加载配置，使 GetAllWatchItems 等方法可以正常工作
+            try
+            {
+                _configuration = _configManager.LoadConfiguration();
+            }
+            catch
+            {
+                // 如果配置文件不存在或有问题，记录但不抛异常
+                // 这样至少可以创建管理器实例，稍后可以创建默认配置
+                _configuration = null;
+            }
         }
 
         /// <summary>
@@ -58,8 +70,11 @@ namespace WatchFile.Core
 
             try
             {
-                // 加载配置
-                _configuration = _configManager.LoadConfiguration();
+                // 如果配置尚未加载，则加载配置
+                if (_configuration == null)
+                {
+                    _configuration = _configManager.LoadConfiguration();
+                }
                 
                 // 创建并启动监控器
                 await CreateWatchers();
