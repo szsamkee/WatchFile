@@ -103,44 +103,52 @@ namespace WatchFile.Core.Parsing
             
             try
             {
-                IWorkbook workbook;
-                using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-                
-                var extension = Path.GetExtension(filePath).ToLowerInvariant();
-                workbook = extension switch
+                IWorkbook? workbook = null;
+                try
                 {
-                    ".xls" => new HSSFWorkbook(fileStream),
-                    ".xlsx" => new XSSFWorkbook(fileStream),
-                    _ => throw new NotSupportedException($"不支持的Excel文件格式: {extension}")
-                };
-
-                var sheet = workbook.GetSheet(settings.SheetName) ?? workbook.GetSheetAt(0);
-                if (sheet == null)
-                {
-                    throw new InvalidOperationException($"找不到工作表: {settings.SheetName}");
-                }
-
-                var records = new List<Dictionary<string, object>>();
-                var startRow = settings.StartRow - 1; // NPOI使用0基索引
-                
-                // 如果有标题行，需要先读取标题
-                var headerRow = settings.HasHeader ? sheet.GetRow(startRow) : null;
-                var dataStartRow = settings.HasHeader ? startRow + 1 : startRow;
-
-                for (int rowIndex = dataStartRow; rowIndex <= sheet.LastRowNum; rowIndex++)
-                {
-                    var row = sheet.GetRow(rowIndex);
-                    if (row == null) continue;
-
-                    var record = ExtractDataFromExcelRow(row, settings, headerRow);
-                    if (record.Count > 0)
+                    using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                    
+                    var extension = Path.GetExtension(filePath).ToLowerInvariant();
+                    workbook = extension switch
                     {
-                        records.Add(record);
-                    }
-                }
+                        ".xls" => new HSSFWorkbook(fileStream),
+                        ".xlsx" => new XSSFWorkbook(fileStream),
+                        _ => throw new NotSupportedException($"不支持的Excel文件格式: {extension}")
+                    };
 
-                result.Data = records;
-                result.IsSuccess = true;
+                    var sheet = workbook.GetSheet(settings.SheetName) ?? workbook.GetSheetAt(0);
+                    if (sheet == null)
+                    {
+                        throw new InvalidOperationException($"找不到工作表: {settings.SheetName}");
+                    }
+
+                    var records = new List<Dictionary<string, object>>();
+                    var startRow = settings.StartRow - 1; // NPOI使用0基索引
+                    
+                    // 如果有标题行，需要先读取标题
+                    var headerRow = settings.HasHeader ? sheet.GetRow(startRow) : null;
+                    var dataStartRow = settings.HasHeader ? startRow + 1 : startRow;
+
+                    for (int rowIndex = dataStartRow; rowIndex <= sheet.LastRowNum; rowIndex++)
+                    {
+                        var row = sheet.GetRow(rowIndex);
+                        if (row == null) continue;
+
+                        var record = ExtractDataFromExcelRow(row, settings, headerRow);
+                        if (record.Count > 0)
+                        {
+                            records.Add(record);
+                        }
+                    }
+
+                    result.Data = records;
+                    result.IsSuccess = true;
+                }
+                finally
+                {
+                    // 🔧 修复：确保 workbook 对象被正确释放
+                    workbook?.Close();
+                }
             }
             catch (Exception ex)
             {
@@ -327,15 +335,35 @@ namespace WatchFile.Core.Parsing
 
         private static Encoding GetEncoding(string encodingName)
         {
-            return encodingName.ToUpperInvariant() switch
+            // 🔧 修复：自动注册编码提供程序以支持 GB2312、GBK 等编码
+            // 这样使用者就不需要手动注册了
+            try 
             {
-                "UTF-8" or "UTF8" => Encoding.UTF8,
-                "GBK" => Encoding.GetEncoding("GBK"),
-                "GB2312" => Encoding.GetEncoding("GB2312"),
-                "ASCII" => Encoding.ASCII,
-                "UNICODE" => Encoding.Unicode,
-                _ => Encoding.UTF8
-            };
+                // 尝试注册编码提供程序（如果已经注册过，不会有副作用）
+                Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            }
+            catch 
+            {
+                // 静默忽略注册错误（可能已经注册过）
+            }
+
+            try
+            {
+                return encodingName.ToUpperInvariant() switch
+                {
+                    "UTF-8" or "UTF8" => Encoding.UTF8,
+                    "GBK" => Encoding.GetEncoding("GBK"),
+                    "GB2312" => Encoding.GetEncoding("GB2312"),
+                    "ASCII" => Encoding.ASCII,
+                    "UNICODE" => Encoding.Unicode,
+                    _ => Encoding.UTF8
+                };
+            }
+            catch (ArgumentException)
+            {
+                // 如果指定的编码不可用，返回 UTF-8 作为后备
+                return Encoding.UTF8;
+            }
         }
     }
 }

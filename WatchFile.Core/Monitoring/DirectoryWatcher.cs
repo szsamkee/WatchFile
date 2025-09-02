@@ -24,11 +24,26 @@ namespace WatchFile.Core.Monitoring
         private readonly object _lockObject = new();
         private bool _disposed = false;
 
+        /// <summary>
+        /// 文件变化事件
+        /// </summary>
         public event EventHandler<FileChangedEventArgs>? FileChanged;
+        
+        /// <summary>
+        /// 监控状态变化事件
+        /// </summary>
         public event EventHandler<MonitorStatusChangedEventArgs>? StatusChanged;
 
+        /// <summary>
+        /// 当前监控状态
+        /// </summary>
         public MonitorStatus Status { get; private set; } = MonitorStatus.Stopped;
 
+        /// <summary>
+        /// 初始化目录监控器
+        /// </summary>
+        /// <param name="config">监控项配置</param>
+        /// <param name="globalSettings">全局设置</param>
         public DirectoryWatcher(WatchItem config, GlobalSettings globalSettings)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -195,13 +210,9 @@ namespace WatchFile.Core.Monitoring
 
                 // 启动或重置缓冲计时器
                 _bufferTimer.Change(_globalSettings.BufferTimeMs, Timeout.Infinite);
-                
-                // 调试信息
-                Console.WriteLine($"[DEBUG] 检测到文件变化: {Path.GetFileName(e.FullPath)}, 类型: {e.ChangeType}");
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"[DEBUG] OnFileSystemEvent异常: {ex.Message}");
                 // 不要抛出异常，避免影响FileSystemWatcher
             }
         }
@@ -247,6 +258,7 @@ namespace WatchFile.Core.Monitoring
                 foreach (var excludePattern in _config.ExcludePatterns)
                 {
                     var pattern = excludePattern.Replace("*", ".*").Replace("?", ".");
+                    
                     if (System.Text.RegularExpressions.Regex.IsMatch(fileName, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
                     {
                         return false;
@@ -346,11 +358,6 @@ namespace WatchFile.Core.Monitoring
                 args.Exception = ex;
                 OnFileChanged(args);
                 
-                // 记录详细的错误信息到控制台（用于调试）
-                Console.WriteLine($"[DEBUG] ProcessFileChange异常: {ex.Message}");
-                Console.WriteLine($"[DEBUG] 文件: {filePath}, 变化类型: {changeType}");
-                Console.WriteLine($"[DEBUG] 监控器状态: {Status}");
-                
                 // 不要重新抛出异常，避免影响监控器的运行状态
             }
         }
@@ -395,6 +402,9 @@ namespace WatchFile.Core.Monitoring
             });
         }
 
+        /// <summary>
+        /// 释放资源
+        /// </summary>
         public void Dispose()
         {
             if (_disposed)

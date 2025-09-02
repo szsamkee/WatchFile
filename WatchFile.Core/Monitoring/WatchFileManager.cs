@@ -20,6 +20,10 @@ namespace WatchFile.Core.Monitoring
         private readonly string _watchDirectory;
         private readonly object _lockObject = new();
 
+        /// <summary>
+        /// 初始化监控临时文件管理器
+        /// </summary>
+        /// <param name="config">监控项配置</param>
         public WatchFileManager(WatchItem config)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));

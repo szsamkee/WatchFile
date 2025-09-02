@@ -14,104 +14,38 @@ namespace WatchFile.ConsoleTest
     class Program
     {
         private static WatchFileManager? _manager;
+        
+        // 🧪 安全删除测试配置
+        private static bool _enableSafeDeleteTest = true;  // 是否启用安全删除测试
+        private static int _deleteDelaySeconds = 2;       // 删除前等待时间（秒）
 
         static async Task Main(string[] args)
         {
-            // 注册编码提供程序以支持GB2312等编码
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            // 🔧 修复后：不再需要手动注册编码提供程序，WatchFile.Core 会自动处理
+            // Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);  // 已移除！
             
             // 设置控制台编码以支持中文显示
             Console.OutputEncoding = Encoding.UTF8;
             Console.InputEncoding = Encoding.UTF8;
             
             Console.WriteLine("=== WatchFile 智能监控程序 ===");
-            Console.WriteLine("版本: 2.0.0");
+            Console.WriteLine("版本: 2.1.2");
             Console.WriteLine("支持: .NET Framework 4.6.1+ 和 .NET 6+");
             Console.WriteLine("功能: CSV/Excel 文件智能变化分析");
             Console.WriteLine("优化: 工控环境大量小文件监控");
             Console.WriteLine("特色: 临时文件缓存 + 详细差异分析");
+            Console.WriteLine($"🧪 测试: 安全删除功能 ({(_enableSafeDeleteTest ? "已启用" : "已禁用")})");
             Console.WriteLine();
 
             try
             {
                 // 设置配置文件路径
-                var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test-config.json");
+                //var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test-config.json");
+                var configPath = "D:\\aa\\abc.wat";
                 
-                if (!File.Exists(configPath))
-                {
-                    Console.WriteLine($"配置文件不存在: {configPath}");
-                    Console.WriteLine("正在创建默认测试配置...");
-                    CreateDefaultTestConfig(configPath);
-                    Console.WriteLine("默认配置已创建，请根据需要修改配置文件。");
-                    Console.WriteLine();
-                }
-
                 // 创建管理器
                 _manager = new WatchFileManager(configPath);
 
-                // 🧪 测试新的静态方法 LoadAndValidateConfiguration
-                Console.WriteLine("=== 测试 LoadAndValidateConfiguration 静态方法 ===");
-                Console.WriteLine("测试 v2.1.0 新增的一次性配置加载和校验方法...");
-                
-                try
-                {
-                    var (isValid, config, errorMessage) = ConfigurationManager.LoadAndValidateConfiguration(configPath);
-                    
-                    if (isValid && config != null)
-                    {
-                        Console.WriteLine($"✅ 静态方法成功加载配置: {config.WatchItems.Count} 个监控项");
-                        Console.WriteLine($"   版本: {config.Version}");
-                        Console.WriteLine($"   全局设置 - 日志级别: {config.GlobalSettings.LogLevel}");
-                        Console.WriteLine($"   全局设置 - 缓冲时间: {config.GlobalSettings.BufferTimeMs}ms");
-                        
-                        foreach (var item in config.WatchItems)
-                        {
-                            Console.WriteLine($"   • {item.Name} ({item.Id}) - {(item.Enabled ? "启用" : "禁用")}");
-                            Console.WriteLine($"     路径: {item.Path} | 类型: {item.FileSettings.FileType}");
-                        }
-                        
-                        Console.WriteLine("🎉 LoadAndValidateConfiguration 方法工作正常！");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"❌ 静态方法校验失败: {errorMessage}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ 静态方法调用异常: {ex.Message}");
-                }
-                
-                Console.WriteLine("按任意键继续测试 GetAllWatchItems...");
-                Console.ReadKey();
-                Console.WriteLine();
-
-                // 🧪 测试：在 StartAsync() 之前获取监控项信息
-                Console.WriteLine("=== 测试 GetAllWatchItems (StartAsync 之前) ===");
-                Console.WriteLine("正在测试修复后的 GetAllWatchItems 方法...");
-                
-                try
-                {
-                    var watchItems = _manager.GetAllWatchItems();
-                    Console.WriteLine($"✅ 成功获取到 {watchItems.Count} 个监控项配置：");
-                    
-                    foreach (var item in watchItems)
-                    {
-                        var status = item.Enabled ? "启用" : "禁用";
-                        var type = item.Type == WatchType.Directory ? "目录" : "文件";
-                        Console.WriteLine($"   • [{status}] {item.Name} ({item.Id})");
-                        Console.WriteLine($"     类型: {type} | 路径: {item.Path}");
-                        Console.WriteLine($"     文件类型: {item.FileSettings.FileType} | 过滤器: {string.Join(", ", item.FileFilters)}");
-                        Console.WriteLine();
-                    }
-                    
-                    Console.WriteLine("🎉 修复验证成功！GetAllWatchItems 在 StartAsync 之前可以正常工作！");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ 测试失败: {ex.Message}");
-                }
-                
                 Console.WriteLine("按任意键继续启动监控...");
                 Console.ReadKey();
                 Console.WriteLine();
@@ -131,11 +65,15 @@ namespace WatchFile.ConsoleTest
                 DisplayWatcherStatuses();
 
                 Console.WriteLine("\n=== 测试说明 ===");
-                Console.WriteLine("1. 手工修改 TestData 目录下的 CSV 文件来测试监控功能");
-                Console.WriteLine("2. 手工添加新的 CSV 或 Excel 文件到 TestData 目录");
-                Console.WriteLine("3. 手工删除 TestData 目录下的文件");
+                Console.WriteLine($"1. 手工修改监控目录下的 CSV 文件来测试监控功能");
+                Console.WriteLine("2. 手工添加新的 CSV 或 Excel 文件到监控目录");
+                Console.WriteLine("3. 手工删除监控目录下的文件");
                 Console.WriteLine("4. 程序会自动检测文件变化并显示详细的内容分析");
                 Console.WriteLine("5. 支持显示具体的新增、修改、删除内容差异");
+                Console.WriteLine($"6. 🧪 安全删除测试: {(_enableSafeDeleteTest ? "已启用" : "已禁用")} - 文件处理完成后自动删除");
+                Console.WriteLine($"7. ⏱️  删除延迟: {_deleteDelaySeconds} 秒（模拟文件处理时间）");
+                Console.WriteLine($"8. 🛡️  安全删除: 自动清理主文件和缓存文件，不触发监控事件");
+                Console.WriteLine("9. 🔓 强制删除: 自动清除只读、隐藏、系统属性，解决权限问题");
                 Console.WriteLine();
 
                 ShowOperationMenu();
@@ -159,9 +97,19 @@ namespace WatchFile.ConsoleTest
                         case 'c':
                         case 'C':
                             Console.Clear();
-                            Console.WriteLine("WatchFile 监控程序 v2.0.0");
+                            Console.WriteLine("WatchFile 监控程序 v2.1.2");
                             Console.WriteLine("智能文件内容变化分析");
                             Console.WriteLine($"[成功] 监控状态: 运行中 ({_manager.ActiveWatchersCount} 个监控器)");
+                            ShowOperationMenu();
+                            break;
+                        case 'd':
+                        case 'D':
+                            ToggleSafeDeleteTest();
+                            ShowOperationMenu();
+                            break;
+                        case 't':
+                        case 'T':
+                            AdjustDeleteDelay();
                             ShowOperationMenu();
                             break;
                         case 'q':
@@ -194,7 +142,7 @@ namespace WatchFile.ConsoleTest
             }
         }
 
-        private static void OnFileChanged(object? sender, FileChangedEventArgs e)
+        private static async void OnFileChanged(object? sender, FileChangedEventArgs e)
         {
             Console.WriteLine($"\n{'='*60}");
             Console.WriteLine($"[文件变化事件] {DateTime.Now:HH:mm:ss.fff}");
@@ -346,6 +294,91 @@ namespace WatchFile.ConsoleTest
             }
             
             Console.WriteLine($"{'='*60}");
+
+            // 🚀 新增：安全删除测试功能
+            // 模拟工控环境：文件处理完成后自动删除，避免目录文件堆积
+            await TestSafeFileDelete(e);
+        }
+
+        /// <summary>
+        /// 测试安全删除功能
+        /// </summary>
+        private static async Task TestSafeFileDelete(FileChangedEventArgs e)
+        {
+            // 检查是否启用安全删除测试
+            if (!_enableSafeDeleteTest)
+            {
+                return;
+            }
+
+            // 只对成功处理的新建和修改文件进行删除测试
+            if (!e.IsSuccess || e.ChangeType == System.IO.WatcherChangeTypes.Deleted)
+            {
+                return;
+            }
+
+            // 跳过已经被删除的文件
+            if (!File.Exists(e.FilePath))
+            {
+                return;
+            }
+
+            try
+            {
+                Console.WriteLine("\n🧪 === 安全删除测试 ===");
+                Console.WriteLine($"📝 模拟场景: 文件 '{Path.GetFileName(e.FilePath)}' 已处理完成，现在进行安全删除");
+                Console.WriteLine($"⏱️  等待 {_deleteDelaySeconds} 秒模拟文件处理时间...");
+                
+                // 模拟文件处理时间
+                await Task.Delay(_deleteDelaySeconds * 1000);
+
+                Console.WriteLine("🗑️  开始执行安全删除...");
+                
+                // 调用新的安全删除 API - 按文件名删除，启用强制删除（清除只读属性）
+                var fileName = Path.GetFileName(e.FilePath);
+                var deleteResult = await _manager!.SafeDeleteFileAsync(fileName, e.WatchItemId, forceDelete: true);
+
+                // 显示删除结果
+                Console.WriteLine("\n📊 === 删除结果报告 ===");
+                Console.WriteLine($"✅ 删除状态: {(deleteResult.IsSuccess ? "成功" : "失败")}");
+                Console.WriteLine($"🎯 目标文件: {deleteResult.FileName}");
+                Console.WriteLine($"🔍 监控项ID: {deleteResult.RequestedWatchItemId}");
+                Console.WriteLine($"⏱️  处理耗时: {deleteResult.Duration.TotalMilliseconds:F0} 毫秒");
+
+                if (deleteResult.IsSuccess)
+                {
+                    Console.WriteLine($"📁 已删除主文件: {deleteResult.DeletedFiles.Count} 个");
+                    Console.WriteLine($"🗂️  已删除缓存文件: {deleteResult.DeletedCacheFiles.Count} 个");
+                    
+                    if (deleteResult.Messages.Any())
+                    {
+                        Console.WriteLine("\n📋 详细信息:");
+                        foreach (var message in deleteResult.Messages)
+                        {
+                            Console.WriteLine($"   {message}");
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("❌ 删除失败:");
+                    foreach (var error in deleteResult.Errors)
+                    {
+                        Console.WriteLine($"   ⚠️  {error}");
+                    }
+                }
+
+                Console.WriteLine("🎉 === 安全删除测试完成 ===\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n❌ [安全删除测试错误] {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"   [内部错误] {ex.InnerException.Message}");
+                }
+                Console.WriteLine();
+            }
         }
 
         private static void OnStatusChanged(object? sender, MonitorStatusChangedEventArgs e)
@@ -439,10 +472,17 @@ namespace WatchFile.ConsoleTest
             Console.WriteLine("\n=== 操作菜单 ===");
             Console.WriteLine("[S] - 显示监控状态");
             Console.WriteLine("[C] - 清理屏幕");
+            Console.WriteLine("[D] - 切换安全删除测试 (当前: " + (_enableSafeDeleteTest ? "启用" : "禁用") + ")");
+            Console.WriteLine("[T] - 调整删除延迟时间 (当前: " + _deleteDelaySeconds + " 秒)");
             Console.WriteLine("[H] - 显示此帮助菜单");
             Console.WriteLine("[Q] - 退出程序");
-            Console.WriteLine("监控正在后台运行，请手工操作TestData目录中的文件来测试...");
+            Console.WriteLine("监控正在后台运行，请手工操作监控目录中的文件来测试...");
             Console.WriteLine("支持的操作：新增文件、修改文件内容、删除文件");
+            if (_enableSafeDeleteTest)
+            {
+                Console.WriteLine($"🧪 安全删除测试已启用：文件处理完成后 {_deleteDelaySeconds} 秒自动删除");
+                Console.WriteLine("🛡️  强制删除：自动清除只读属性，处理权限问题");
+            }
         }
 
         private static void CreateDefaultTestConfig(string configPath)
@@ -507,6 +547,53 @@ namespace WatchFile.ConsoleTest
 
             var configManager = new WatchFile.Core.Configuration.ConfigurationManager();
             configManager.SaveConfiguration(defaultConfig, configPath);
+        }
+
+        /// <summary>
+        /// 切换安全删除测试状态
+        /// </summary>
+        private static void ToggleSafeDeleteTest()
+        {
+            _enableSafeDeleteTest = !_enableSafeDeleteTest;
+            var status = _enableSafeDeleteTest ? "已启用" : "已禁用";
+            Console.WriteLine($"\n🧪 安全删除测试: {status}");
+            
+            if (_enableSafeDeleteTest)
+            {
+                Console.WriteLine("   ✅ 文件处理完成后将自动执行安全删除");
+                Console.WriteLine($"   ⏱️  删除延迟: {_deleteDelaySeconds} 秒");
+            }
+            else
+            {
+                Console.WriteLine("   ❌ 不会自动删除文件");
+            }
+        }
+
+        /// <summary>
+        /// 调整删除延迟时间
+        /// </summary>
+        private static void AdjustDeleteDelay()
+        {
+            Console.WriteLine($"\n⏱️  当前删除延迟: {_deleteDelaySeconds} 秒");
+            Console.Write("请输入新的延迟时间（秒，1-60）: ");
+            
+            try
+            {
+                var input = Console.ReadLine();
+                if (int.TryParse(input, out var newDelay) && newDelay >= 1 && newDelay <= 60)
+                {
+                    _deleteDelaySeconds = newDelay;
+                    Console.WriteLine($"✅ 删除延迟已设置为: {_deleteDelaySeconds} 秒");
+                }
+                else
+                {
+                    Console.WriteLine("❌ 无效输入，请输入 1-60 之间的整数");
+                }
+            }
+            catch
+            {
+                Console.WriteLine("❌ 输入错误，保持原设置");
+            }
         }
     }
 }

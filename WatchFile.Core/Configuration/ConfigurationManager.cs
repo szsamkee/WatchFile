@@ -14,6 +14,10 @@ namespace WatchFile.Core.Configuration
     {
         private readonly string _defaultConfigPath;
 
+        /// <summary>
+        /// 初始化配置管理器
+        /// </summary>
+        /// <param name="configPath">配置文件路径，如果为null则使用默认路径</param>
         public ConfigurationManager(string? configPath = null)
         {
             _defaultConfigPath = configPath ?? "watchfile-config.json";
@@ -199,6 +203,7 @@ namespace WatchFile.Core.Configuration
                         Type = WatchType.Directory,
                         Recursive = true,
                         FileFilters = new List<string> { "*.csv", "*.xlsx" },
+                        ExcludePatterns = new List<string> { "*.watchfile", "*.tmp", "*_backup_*", "*.log" },
                         WatchEvents = new List<WatchEvent> { WatchEvent.Created, WatchEvent.Modified },
                         FileSettings = new FileSettings
                         {
