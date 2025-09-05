@@ -342,6 +342,7 @@ namespace WatchFile.Core.Monitoring
                     if (parseResult.IsSuccess)
                     {
                         args.ExtractedData = parseResult.Data;
+                        args.CurrentData = parseResult.Data; // 同时设置变化后的完整数据
                     }
                     else
                     {

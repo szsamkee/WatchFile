@@ -46,6 +46,12 @@ namespace WatchFile.Core.Events
         public List<Dictionary<string, object>>? PreviousData { get; set; }
 
         /// <summary>
+        /// 变化后的完整文件内容（包含文件的所有数据行）
+        /// 注意：此属性与 ExtractedData 内容相同，但语义更明确，表示变化后的完整状态
+        /// </summary>
+        public List<Dictionary<string, object>>? CurrentData { get; set; }
+
+        /// <summary>
         /// 数据变化详情
         /// </summary>
         public DataChangeDetails? ChangeDetails { get; set; }
@@ -68,7 +74,7 @@ namespace WatchFile.Core.Events
         /// <summary>
         /// 提取的数据行数
         /// </summary>
-        public int DataRowCount => ExtractedData?.Count ?? 0;
+        public int DataRowCount => CurrentData?.Count ?? ExtractedData?.Count ?? 0;
     }
 
     /// <summary>

@@ -243,8 +243,33 @@ namespace WatchFile.ConsoleTest
                 }
             }
 
-            // 显示当前文件完整数据（如果没有详细变化信息）
-            if (e.ExtractedData != null && e.ExtractedData.Count > 0)
+            // 显示当前文件完整数据
+            if (e.CurrentData != null && e.CurrentData.Count > 0)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"=== 变化后的完整文件内容 === (共 {e.DataRowCount} 行)");
+                
+                // 如果没有变化详情，显示前几行数据
+                if (e.ChangeDetails == null || !e.ChangeDetails.HasChanges)
+                {
+                    var displayCount = Math.Min(5, e.CurrentData.Count);
+                    for (int i = 0; i < displayCount; i++)
+                    {
+                        Console.WriteLine($"   第 {i + 1} 行:");
+                        foreach (var column in e.CurrentData[i])
+                        {
+                            Console.WriteLine($"       {column.Key}: {column.Value}");
+                        }
+                    }
+                    
+                    if (e.CurrentData.Count > 5)
+                    {
+                        Console.WriteLine($"       ... 还有 {e.CurrentData.Count - 5} 行数据");
+                    }
+                }
+            }
+            // 兼容性：如果没有 CurrentData 但有 ExtractedData，则使用 ExtractedData
+            else if (e.ExtractedData != null && e.ExtractedData.Count > 0)
             {
                 Console.WriteLine();
                 Console.WriteLine($"=== 当前文件数据 === (共 {e.DataRowCount} 行)");
