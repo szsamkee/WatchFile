@@ -7,7 +7,7 @@
     
     <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.3.0</PackageVersion>
+    <PackageVersion>2.3.1</PackageVersion>
     <Authors>不会写又爱写代码的老祁</Authors>
     <Company>老祁个人工作室</Company>
     <Product>WatchFile</Product>
@@ -21,6 +21,13 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>Copyright © 2024 老祁个人工作室</Copyright>
     <PackageReleaseNotes>
+      v2.3.1:
+      - 🆕 新增 CurrentData 属性：语义更明确地表示变化后的完整文件状态
+      - 🔄 改进数据展示逻辑：优先使用 CurrentData 显示变化后的完整内容
+      - 🛡️ 保持向后兼容：ExtractedData 属性继续有效，不影响现有代码
+      - 📊 用户体验优化：更清晰地区分变化分析和完整文件内容展示
+      - 🧪 测试程序更新：控制台测试程序同步支持新的数据显示方式
+      
       v2.3.0:
       - 🚀 新增配置驱动的自动删除功能：DeleteAfterProcessing
       - 🛡️ 智能文件清理：自动删除主文件和缓存文件
