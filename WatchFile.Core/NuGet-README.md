@@ -4,15 +4,16 @@
 
 专为工控环境设计的高性能文件监控库，支持 .NET Framework 4.6.1+ 和 .NET 6+。
 
-## 🆕 v2.4.0 新功能
+## 🆕 v2.5.0 新功能
 
-### 🔍 离线变化检测
-- **智能恢复监控** - 监控器重启时自动检测停机期间的文件变化
-- **无缝衔接** - 自动识别新增、修改、删除的文件并触发相应事件
+### � 简化离线变化处理
+- **自动联动模式** - 新增 `autoTriggerFileChangedEvents` 配置，离线变化可自动转换为 FileChanged 事件
+- **统一事件处理** - 用户只需处理一个 FileChanged 事件，离线和实时变化统一处理
+- **配置灵活性** - 支持自动模式和手动模式，满足不同使用场景
 
-### ⚡ 性能优化
-- **内存优化** - 减少内存占用，提升大量文件监控性能
-- **API优化** - WatchFileManager → WatchManager，更清晰的命名
+### ⚡ 用户体验优化
+- **默认配置优化** - `TriggerEventsForNewFiles` 默认为 true，提升测试体验
+- **文档完善** - 添加详细的使用模式说明和最佳实践
 
 ## ✨ 核心特性
 
@@ -64,6 +65,7 @@ await manager.StartAsync();
       "enabled": true,
       "triggerEventsForNewFiles": true,
       "triggerEventsForDeletedFiles": true,
+      "autoTriggerFileChangedEvents": true,
       "comparisonMethod": "TimestampAndSize"
     }
   },

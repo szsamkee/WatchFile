@@ -1,6 +1,12 @@
-# WatchFile API 文档 v2.4.0
+# WatchFile API 文档 v2.5.0
 
 ## 版本更新
+
+### v2.5.0 (2025-09-07)
+- **简化离线变化处理** - 新增 `AutoTriggerFileChangedEvents` 配置选项
+- **自动联动模式** - 离线检测变化可自动转换为 FileChanged 事件，简化用户代码
+- **用户体验优化** - `TriggerEventsForNewFiles` 默认为 true，提升测试体验
+- **配置灵活性** - 支持自动模式和手动模式，满足不同使用场景
 
 ### v2.4.0 (2025-09-07)
 - **新增离线变化检测功能** - 监控器重启时自动检测停机期间的文件变化
@@ -690,5 +696,116 @@ var statuses = manager.WatcherStatuses;
 foreach (var status in statuses)
 {
     Console.WriteLine($"{status.Key}: {status.Value}");
+}
+```
+
+## 离线变化检测配置
+
+### OfflineChangeDetectionSettings
+
+控制监控器重启时如何检测停机期间的文件变化。
+
+```csharp
+public class OfflineChangeDetectionSettings
+{
+    /// <summary>
+    /// 是否启用离线变化检测
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+    
+    /// <summary>
+    /// 是否为重启后检测到的新文件触发创建事件
+    /// </summary>
+    public bool TriggerEventsForNewFiles { get; set; } = true;
+    
+    /// <summary>
+    /// 是否为重启后消失的文件触发删除事件
+    /// </summary>
+    public bool TriggerEventsForDeletedFiles { get; set; } = true;
+    
+    /// <summary>
+    /// 离线变化是否自动转换为正常的FileChanged事件
+    /// 当为true时，离线检测到的变化会根据WatchItem的配置自动触发FileChanged事件
+    /// 当为false时，只触发OfflineChangesDetected事件，需要用户手动处理
+    /// </summary>
+    public bool AutoTriggerFileChangedEvents { get; set; } = true;
+    
+    /// <summary>
+    /// 文件对比方法
+    /// </summary>
+    public FileComparisonMethod ComparisonMethod { get; set; } = FileComparisonMethod.TimestampAndSize;
+    
+    /// <summary>
+    /// 时间戳对比的容差（秒），用于避免精度问题
+    /// </summary>
+    public int TimestampToleranceSeconds { get; set; } = 2;
+}
+```
+
+### 配置示例
+
+```json
+{
+  "globalSettings": {
+    "offlineChangeDetection": {
+      "enabled": true,
+      "triggerEventsForNewFiles": true,
+      "triggerEventsForDeletedFiles": true,
+      "autoTriggerFileChangedEvents": true,
+      "comparisonMethod": "TimestampAndSize",
+      "timestampToleranceSeconds": 2
+    }
+  }
+}
+```
+
+### 使用模式
+
+#### 1. 自动模式（推荐）
+设置 `autoTriggerFileChangedEvents: true`，离线检测到的变化会自动根据 `WatchItem` 的 `watchEvents` 配置触发对应的 `FileChanged` 事件。
+
+```csharp
+// 只需处理 FileChanged 事件，离线和在线变化统一处理
+manager.FileChanged += (sender, e) => {
+    Console.WriteLine($"文件变化: {e.FilePath}");
+    Console.WriteLine($"检测模式: {(e.IsOfflineChange ? "离线检测" : "实时监控")}");
+};
+```
+
+#### 2. 手动模式
+设置 `autoTriggerFileChangedEvents: false`，需要手动处理 `OfflineChangesDetected` 事件。
+
+```csharp
+// 需要同时处理两种事件
+manager.FileChanged += OnFileChanged;           // 实时变化
+manager.OfflineChangesDetected += OnOfflineChanges; // 离线变化
+
+private void OnOfflineChanges(object sender, OfflineChangesDetectedEventArgs e) {
+    foreach (var change in e.Changes) {
+        // 手动处理每个离线变化
+        ProcessOfflineChange(change);
+    }
+}
+```
+
+### FileComparisonMethod 枚举
+
+```csharp
+public enum FileComparisonMethod
+{
+    /// <summary>
+    /// 仅对比时间戳
+    /// </summary>
+    Timestamp,
+    
+    /// <summary>
+    /// 对比时间戳和文件大小（推荐）
+    /// </summary>
+    TimestampAndSize,
+    
+    /// <summary>
+    /// 对比内容哈希（更准确但耗时）
+    /// </summary>
+    ContentHash
 }
 ```

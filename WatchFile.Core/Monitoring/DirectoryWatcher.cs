@@ -480,13 +480,21 @@ namespace WatchFile.Core.Monitoring
                 eventArgs.Changes = offlineChanges;
                 eventArgs.DetectionEndTime = DateTime.Now;
 
-                // 为每个检测到的变化触发相应的文件变化事件
-                foreach (var change in offlineChanges)
+                // 根据配置决定是否自动触发FileChanged事件
+                if (_globalSettings.OfflineChangeDetection.AutoTriggerFileChangedEvents)
                 {
-                    await ProcessOfflineChange(change);
+                    // 自动模式：为每个检测到的变化根据WatchItem配置触发相应的FileChanged事件
+                    foreach (var change in offlineChanges)
+                    {
+                        // 检查当前变化类型是否在监控事件列表中
+                        if (ShouldTriggerEventForOfflineChange(change))
+                        {
+                            await ProcessOfflineChange(change);
+                        }
+                    }
                 }
 
-                // 触发离线变化检测完成事件
+                // 始终触发离线变化检测完成事件（用户可选择性处理）
                 OfflineChangesDetected?.Invoke(this, eventArgs);
 
                 if (offlineChanges.Count > 0)
@@ -578,6 +586,23 @@ namespace WatchFile.Core.Monitoring
             {
                 // 静默处理异常，避免阻止监控启动
             }
+        }
+
+        /// <summary>
+        /// 判断离线变化是否应该触发FileChanged事件
+        /// </summary>
+        private bool ShouldTriggerEventForOfflineChange(OfflineChangeInfo change)
+        {
+            var changeType = change.ChangeType switch
+            {
+                OfflineChangeType.Created => WatchEvent.Created,
+                OfflineChangeType.Modified => WatchEvent.Modified,
+                OfflineChangeType.Deleted => WatchEvent.Deleted,
+                OfflineChangeType.Recreated => WatchEvent.Created,
+                _ => WatchEvent.Modified
+            };
+
+            return _config.WatchEvents.Contains(changeType);
         }
 
         /// <summary>

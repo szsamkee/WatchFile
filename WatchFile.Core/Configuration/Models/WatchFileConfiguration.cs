@@ -376,6 +376,13 @@ namespace WatchFile.Core.Configuration.Models
         public bool TriggerEventsForDeletedFiles { get; set; } = true;
         
         /// <summary>
+        /// 离线变化是否自动转换为正常的FileChanged事件
+        /// 当为true时，离线检测到的变化会根据WatchItem的配置自动触发FileChanged事件
+        /// 当为false时，只触发OfflineChangesDetected事件，需要用户手动处理
+        /// </summary>
+        public bool AutoTriggerFileChangedEvents { get; set; } = true;
+        
+        /// <summary>
         /// 文件对比方法
         /// </summary>
         public FileComparisonMethod ComparisonMethod { get; set; } = FileComparisonMethod.TimestampAndSize;

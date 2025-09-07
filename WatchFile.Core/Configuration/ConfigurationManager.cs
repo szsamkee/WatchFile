@@ -194,8 +194,9 @@ namespace WatchFile.Core.Configuration
                     OfflineChangeDetection = new OfflineChangeDetectionSettings
                     {
                         Enabled = true,
-                        TriggerEventsForNewFiles = false,
+                        TriggerEventsForNewFiles = true,
                         TriggerEventsForDeletedFiles = true,
+                        AutoTriggerFileChangedEvents = true,
                         ComparisonMethod = FileComparisonMethod.TimestampAndSize,
                         TimestampToleranceSeconds = 2
                     }

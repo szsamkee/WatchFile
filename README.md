@@ -15,17 +15,16 @@
 
 > 💡 **提示**: 如果通过NuGet安装，API.md文档也包含在包中，可在项目包文件夹中找到。
 
-## 🆕 最新更新 v2.4.0
+## 🆕 最新更新 v2.5.0
 
-### 🔍 离线变化检测
-- **智能恢复监控** - 监控器重启时自动检测停机期间的文件变化
-- **无缝衔接** - 自动识别新增、修改、删除的文件并触发相应事件
-- **配置驱动** - 完全可配置的检测策略和行为
+### � 简化离线变化处理
+- **自动联动模式** - 新增 `autoTriggerFileChangedEvents` 配置，离线变化可自动转换为 FileChanged 事件
+- **统一事件处理** - 用户只需处理一个 FileChanged 事件，离线和实时变化统一处理
+- **配置灵活性** - 支持自动模式和手动模式，满足不同使用场景
 
-### ⚡ 性能优化
-- **内存优化** - 移除ExtractedData冗余属性，减少内存占用
-- **类名优化** - WatchFileManager → WatchManager，API更清晰
-- **执行优化** - 优化启动顺序，确保检测准确性
+### ⚡ 用户体验优化
+- **默认配置优化** - `TriggerEventsForNewFiles` 默认为 true，提升测试体验
+- **文档完善** - 添加详细的使用模式说明和最佳实践
 
 ## 🚀 项目结构
 
@@ -131,6 +130,7 @@ Install-Package WatchFile.Core
       "enabled": true,
       "triggerEventsForNewFiles": true,
       "triggerEventsForDeletedFiles": true,
+      "autoTriggerFileChangedEvents": true,
       "comparisonMethod": "TimestampAndSize",
       "timestampToleranceSeconds": 2
     }
@@ -455,6 +455,61 @@ await manager.StopAsync();
 manager.Dispose();
 ```
 
+## 🔍 离线变化检测使用说明
+
+### 自动模式（推荐）
+当配置 `"autoTriggerFileChangedEvents": true` 时，离线检测到的变化会自动转换为 FileChanged 事件：
+
+```csharp
+// 只需处理一个事件，离线和实时变化统一处理
+manager.FileChanged += (sender, e) =>
+{
+    Console.WriteLine($"文件变化: {e.FilePath}");
+    Console.WriteLine($"检测模式: {(e.IsOfflineChange ? "离线检测" : "实时监控")}");
+    Console.WriteLine($"变化类型: {e.ChangeType}");
+    
+    // 处理变化数据
+    if (e.ChangeDetails?.HasChanges == true)
+    {
+        Console.WriteLine($"变化摘要: {e.ChangeDetails.GetSummary()}");
+    }
+};
+
+// 可选：监听离线检测完成事件（用于了解检测过程）
+manager.OfflineChangesDetected += (sender, e) =>
+{
+    if (e.IsSuccess && e.TotalChanges > 0)
+    {
+        Console.WriteLine($"离线检测完成: {e.GetSummary()}");
+    }
+};
+```
+
+### 手动模式
+当配置 `"autoTriggerFileChangedEvents": false` 时，需要手动处理离线变化：
+
+```csharp
+// 处理实时变化
+manager.FileChanged += (sender, e) =>
+{
+    Console.WriteLine($"实时变化: {e.FilePath} - {e.ChangeType}");
+};
+
+// 手动处理离线变化
+manager.OfflineChangesDetected += (sender, e) =>
+{
+    Console.WriteLine($"检测到 {e.TotalChanges} 个离线变化");
+    
+    foreach (var change in e.Changes)
+    {
+        Console.WriteLine($"离线变化: {change.FilePath} - {change.ChangeType}");
+        
+        // 根据业务需求手动处理每个变化
+        await ProcessOfflineChange(change);
+    }
+};
+```
+
 ### 4. 自定义处理器
 
 ```csharp
@@ -588,6 +643,21 @@ manager.AddHandler(new FileChangeHandler());
 | logLevel | string | "Info" | 日志级别 (Debug/Info/Warning/Error) |
 | bufferTimeMs | int | 500 | 文件变化缓冲时间（毫秒） |
 | maxRetries | int | 3 | 文件读取失败重试次数 |
+
+#### 离线变化检测 (offlineChangeDetection)
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| enabled | bool | true | 是否启用离线变化检测 |
+| triggerEventsForNewFiles | bool | true | 是否为新文件触发创建事件 |
+| triggerEventsForDeletedFiles | bool | true | 是否为删除文件触发删除事件 |
+| **autoTriggerFileChangedEvents** | bool | true | **是否自动将离线变化转换为FileChanged事件** |
+| comparisonMethod | enum | TimestampAndSize | 文件对比方法 (Timestamp/TimestampAndSize/ContentHash) |
+| timestampToleranceSeconds | int | 2 | 时间戳对比容差（秒） |
+
+> 💡 **重要**: `autoTriggerFileChangedEvents` 控制离线检测的变化是否自动触发 FileChanged 事件。
+> - **true (推荐)**: 离线变化自动根据 watchEvents 配置触发对应事件，用户只需处理 FileChanged
+> - **false**: 仅触发 OfflineChangesDetected 事件，需要用户手动处理
 
 ### 监控项 (watchItems)
 
@@ -755,7 +825,18 @@ MIT License - 查看 [LICENSE](LICENSE) 文件
 
 ## 更新日志
 
-### v2.4.0 (2025-09-07)
+### v2.5.0 (2025-09-07)
+
+#### 🔄 简化离线变化处理
+- **自动联动模式** - 新增 `autoTriggerFileChangedEvents` 配置，离线变化可自动转换为 FileChanged 事件
+- **统一事件处理** - 用户只需处理一个 FileChanged 事件，离线和实时变化统一处理
+- **配置灵活性** - 支持自动模式和手动模式，满足不同使用场景
+
+#### ⚡ 用户体验优化
+- **默认配置优化** - `TriggerEventsForNewFiles` 默认为 true，提升测试体验
+- **文档完善** - 添加详细的使用模式说明和最佳实践
+
+### v2.4.0
 
 #### 🔍 离线变化检测
 - **智能恢复监控** - 监控器重启时自动检测停机期间的文件变化

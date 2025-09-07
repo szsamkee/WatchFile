@@ -7,7 +7,7 @@
     
     <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.4.1</PackageVersion>
+    <PackageVersion>2.5.0</PackageVersion>
     <Authors>不会写又爱写代码的老祁</Authors>
     <Company>老祁个人工作室</Company>
     <Product>WatchFile</Product>
@@ -21,6 +21,13 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>Copyright © 2024 老祁个人工作室</Copyright>
     <PackageReleaseNotes>
+      v2.5.0:
+      - 🚀 重大改进：新增 AutoTriggerFileChangedEvents 配置选项
+      - ✨ 自动模式：离线检测变化可自动转换为 FileChanged 事件，简化用户代码
+      - 🎛️ 手动模式：保留原有 OfflineChangesDetected 事件处理方式
+      - 🔧 配置优化：TriggerEventsForNewFiles 默认改为 true，提升测试体验
+      - 📚 文档完善：添加详细的使用模式说明和配置参考
+      
       v2.4.1:
       - 📝 文档更新：同步更新README.md和API.md到v2.4.0版本内容
       - 🔄 NuGet包描述更新：包含最新功能介绍和使用指南
