@@ -6,6 +6,15 @@
 [![Downloads](https://img.shields.io/nuget/dt/WatchFile.Core.svg)](https://www.nuget.org/packages/WatchFile.Core/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+## 📚 文档导航
+
+- **[完整API文档](https://github.com/szsamkee/WatchFile/blob/main/WatchFile.Core/API.md)** - 详细的类、方法、事件文档
+- **[配置参考](https://github.com/szsamkee/WatchFile#配置文件结构)** - 完整的配置选项说明  
+- **[示例代码](https://github.com/szsamkee/WatchFile#快速开始)** - 快速入门示例
+- **[更新日志](https://github.com/szsamkee/WatchFile#更新日志)** - 版本更新历史
+
+> 💡 **提示**: 如果通过NuGet安装，API.md文档也包含在包中，可在项目包文件夹中找到。
+
 ## 🆕 最新更新 v2.4.0
 
 ### 🔍 离线变化检测

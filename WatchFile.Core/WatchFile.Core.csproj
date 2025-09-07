@@ -7,7 +7,7 @@
     
     <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.4.0</PackageVersion>
+    <PackageVersion>2.4.1</PackageVersion>
     <Authors>不会写又爱写代码的老祁</Authors>
     <Company>老祁个人工作室</Company>
     <Product>WatchFile</Product>
@@ -21,12 +21,16 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>Copyright © 2024 老祁个人工作室</Copyright>
     <PackageReleaseNotes>
-      v2.3.1:
-      - 🆕 新增 CurrentData 属性：语义更明确地表示变化后的完整文件状态
-      - 🔄 改进数据展示逻辑：优先使用 CurrentData 显示变化后的完整内容
-      - 🛡️ 保持向后兼容：ExtractedData 属性继续有效，不影响现有代码
-      - 📊 用户体验优化：更清晰地区分变化分析和完整文件内容展示
-      - 🧪 测试程序更新：控制台测试程序同步支持新的数据显示方式
+      v2.4.1:
+      - 📝 文档更新：同步更新README.md和API.md到v2.4.0版本内容
+      - 🔄 NuGet包描述更新：包含最新功能介绍和使用指南
+      
+      v2.4.0:
+      - 🔍 离线变化检测：监控器重启时自动检测停机期间的文件变化
+      - ⚡ 性能优化：移除ExtractedData冗余属性，减少内存占用
+      - 🏷️ 类名优化：WatchFileManager → WatchManager，API更清晰
+      - 🛠️ Bug修复：离线检测文件支持配置驱动的自动删除
+      - ⚙️ 执行优化：先执行离线检测再初始化watchfile，确保准确性
       
       v2.3.0:
       - 🚀 新增配置驱动的自动删除功能：DeleteAfterProcessing
@@ -76,13 +80,17 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
     
-    <!-- 将 API.md 作为 NuGet README -->
-    <PackageReadmeFile>API.md</PackageReadmeFile>
+    <!-- 将 NuGet-README.md 作为 NuGet README -->
+    <PackageReadmeFile>NuGet-README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- 包含 NuGet-README.md 作为包的README -->
+    <None Include="NuGet-README.md" Pack="true" PackagePath="\" />
+    <!-- 包含完整的 README.md 到包中 -->
+    <None Include="..\README.md" Pack="true" PackagePath="docs\" />
     <!-- 包含 API.md 文件到 NuGet 包中 -->
-    <None Include="API.md" Pack="true" PackagePath="\" />
+    <None Include="API.md" Pack="true" PackagePath="docs\" />
   </ItemGroup>
 
   <ItemGroup>
