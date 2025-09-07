@@ -1,4 +1,14 @@
-# WatchFile API 文档
+# WatchFile API 文档 v2.4.0
+
+## 版本更新
+
+### v2.4.0 (2025-09-07)
+- **新增离线变化检测功能** - 监控器重启时自动检测停机期间的文件变化
+- **优化内存使用** - 移除ExtractedData冗余属性，统一使用CurrentData
+- **重命名核心类** - WatchFileManager → WatchManager，避免命名冲突  
+- **完善自动删除** - 离线检测到的文件也支持配置驱动的自动删除
+- **优化执行顺序** - 先执行离线检测再初始化watchfile
+- **完善默认配置** - 包含完整的OfflineChangeDetection设置
 
 ## 命名空间
 
@@ -11,18 +21,18 @@
 
 ## 核心类
 
-### WatchFileManager
+### WatchManager
 
 文件监控管理器，库的主入口点。提供完整的文件监控、内容变化分析和事件通知功能。
 
 ```csharp
-public class WatchFileManager : IDisposable
+public class WatchManager : IDisposable
 ```
 
 #### 构造函数
 
 ```csharp
-public WatchFileManager(string? configPath = null)
+public WatchManager(string? configPath = null)
 ```
 
 - `configPath`: 配置文件路径，默认为 "watchfile-config.json"
@@ -50,13 +60,16 @@ public Dictionary<string, MonitorStatus> WatcherStatuses { get; }
 public event EventHandler<FileChangedEventArgs>? FileChanged;
 ```
 文件变化事件，包含详细的内容差异分析。
-```
-文件变化事件。
 
 ```csharp
 public event EventHandler<MonitorStatusChangedEventArgs>? StatusChanged;
 ```
 监控状态变化事件。
+
+```csharp
+public event EventHandler<OfflineChangesDetectedEventArgs>? OfflineChangesDetected;
+```
+离线变化检测完成事件。当监控器启动时检测到停机期间有文件变化时触发。
 
 #### 方法
 
@@ -591,7 +604,7 @@ public enum LogLevel
 ### 基本监控
 
 ```csharp
-var manager = new WatchFileManager("config.json");
+var manager = new WatchManager("config.json");
 
 manager.FileChanged += (sender, e) =>
 {

@@ -2,6 +2,22 @@
 
 一个专为工控环境设计的高性能文件监控库，支持 .NET Framework 4.6.1+ 和 .NET 6+，能够监控大量小文件的变化，并提供详细的内容差异分析，特别适用于工控设备日志文件监控。
 
+[![NuGet](https://img.shields.io/nuget/v/WatchFile.Core.svg)](https://www.nuget.org/packages/WatchFile.Core/)
+[![Downloads](https://img.shields.io/nuget/dt/WatchFile.Core.svg)](https://www.nuget.org/packages/WatchFile.Core/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+## 🆕 最新更新 v2.4.0
+
+### 🔍 离线变化检测
+- **智能恢复监控** - 监控器重启时自动检测停机期间的文件变化
+- **无缝衔接** - 自动识别新增、修改、删除的文件并触发相应事件
+- **配置驱动** - 完全可配置的检测策略和行为
+
+### ⚡ 性能优化
+- **内存优化** - 移除ExtractedData冗余属性，减少内存占用
+- **类名优化** - WatchFileManager → WatchManager，API更清晰
+- **执行优化** - 优化启动顺序，确保检测准确性
+
 ## 🚀 项目结构
 
 ```
@@ -101,7 +117,14 @@ Install-Package WatchFile.Core
     "enableLogging": true,
     "logLevel": "Info",
     "bufferTimeMs": 500,
-    "maxRetries": 3
+    "maxRetries": 3,
+    "offlineChangeDetection": {
+      "enabled": true,
+      "triggerEventsForNewFiles": true,
+      "triggerEventsForDeletedFiles": true,
+      "comparisonMethod": "TimestampAndSize",
+      "timestampToleranceSeconds": 2
+    }
   },
   "watchItems": [
     {
@@ -358,7 +381,7 @@ using WatchFile.Core;
 using WatchFile.Core.Events;
 
 // 创建管理器
-var manager = new WatchFileManager("watchfile-config.json");
+var manager = new WatchManager("watchfile-config.json");
 
 // 注册事件处理
 manager.FileChanged += (sender, e) =>
@@ -611,7 +634,12 @@ manager.AddHandler(new FileChangeHandler());
 ### WatchFileManager
 
 ```csharp
-public class WatchFileManager : IDisposable
+### WatchManager
+
+核心文件监控管理器。
+
+```csharp
+public class WatchManager : IDisposable
 {
     // 事件
     public event EventHandler<FileChangedEventArgs> FileChanged;
@@ -718,7 +746,23 @@ MIT License - 查看 [LICENSE](LICENSE) 文件
 
 ## 更新日志
 
-### v2.0.0 (当前版本)
+### v2.4.0 (2025-09-07)
+
+#### 🔍 离线变化检测
+- **智能恢复监控** - 监控器重启时自动检测停机期间的文件变化
+- **无缝衔接** - 自动识别新增、修改、删除的文件并触发相应事件
+- **配置驱动** - 完全可配置的检测策略和行为
+
+#### ⚡ 性能优化
+- **内存优化** - 移除ExtractedData冗余属性，减少内存占用
+- **类名优化** - WatchFileManager → WatchManager，API更清晰
+- **执行优化** - 优化启动顺序，确保检测准确性
+
+#### 🔧 Bug修复
+- **修复自动删除** - 离线检测到的文件也支持配置驱动的自动删除
+- **修复初始化顺序** - 先执行离线检测再初始化watchfile，确保检测准确
+
+### v2.0.0
 
 #### 🚀 重大功能增强
 - **智能内容变化分析**：新增详细的文件内容差异检测
