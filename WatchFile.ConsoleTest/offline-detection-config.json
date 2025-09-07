@@ -1,0 +1,72 @@
+{
+  "Version": "1.0",
+  "GlobalSettings": {
+    "EnableLogging": true,
+    "LogLevel": "Info",
+    "BufferTimeMs": 500,
+    "MaxRetries": 3,
+    "LogFilePath": "logs/watchfile.log",
+    "OfflineChangeDetection": {
+      "Enabled": true,
+      "TriggerEventsForNewFiles": false,
+      "TriggerEventsForDeletedFiles": true,
+      "ComparisonMethod": "TimestampAndSize",
+      "TimestampToleranceSeconds": 2
+    }
+  },
+  "WatchItems": [
+    {
+      "Id": "sample-monitor-with-offline-detection",
+      "Name": "示例监控-支持离线变化检测",
+      "Enabled": true,
+      "Path": "d:\\aa",
+      "Type": "Directory",
+      "Recursive": true,
+      "FileFilters": [
+        "*.csv"
+      ],
+      "ExcludePatterns": [
+        "*.watchfile",
+        "*.tmp",
+        "*_backup_*"
+      ],
+      "WatchEvents": [
+        "Created",
+        "Modified"
+      ],
+      "FileSettings": {
+        "FileType": "CSV",
+        "HasHeader": true,
+        "Delimiter": ",",
+        "Encoding": "GB2312",
+        "SheetName": "Sheet1",
+        "StartRow": 1,
+        "ColumnMappings": [
+          {
+            "SourceColumn": "测试结果",
+            "TargetName": "TestResult",
+            "DataType": "String",
+            "Required": true,
+            "Format": ""
+          },
+          {
+            "SourceColumn": "产品条码",
+            "TargetName": "ProductBarcode",
+            "DataType": "String",
+            "Required": true,
+            "Format": ""
+          }
+        ]
+      },
+      "WatchFileSettings": {
+        "WatchFileDirectory": ".watch",
+        "WatchFileExtension": ".watchfile",
+        "MaxConcurrentFiles": 16,
+        "ThrowOnMissingWatchFile": false,
+        "EnableDifferenceLogging": true,
+        "DifferenceLogPath": "logs/differences.log"
+      },
+      "DeleteAfterProcessing": false
+    }
+  ]
+}

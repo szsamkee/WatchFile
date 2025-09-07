@@ -53,6 +53,11 @@ namespace WatchFile.Core.Configuration.Models
         /// 日志文件路径
         /// </summary>
         public string LogFilePath { get; set; } = "logs/watchfile.log";
+        
+        /// <summary>
+        /// 离线变化检测设置
+        /// </summary>
+        public OfflineChangeDetectionSettings OfflineChangeDetection { get; set; } = new OfflineChangeDetectionSettings();
     }
 
     /// <summary>
@@ -348,5 +353,57 @@ namespace WatchFile.Core.Configuration.Models
         /// 错误级别，仅显示错误信息
         /// </summary>
         Error
+    }
+
+    /// <summary>
+    /// 离线变化检测设置
+    /// </summary>
+    public class OfflineChangeDetectionSettings
+    {
+        /// <summary>
+        /// 是否启用离线变化检测
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+        
+        /// <summary>
+        /// 是否为重启后检测到的新文件触发创建事件
+        /// </summary>
+        public bool TriggerEventsForNewFiles { get; set; } = false;
+        
+        /// <summary>
+        /// 是否为重启后消失的文件触发删除事件
+        /// </summary>
+        public bool TriggerEventsForDeletedFiles { get; set; } = true;
+        
+        /// <summary>
+        /// 文件对比方法
+        /// </summary>
+        public FileComparisonMethod ComparisonMethod { get; set; } = FileComparisonMethod.TimestampAndSize;
+        
+        /// <summary>
+        /// 时间戳对比的容差（秒），用于避免精度问题
+        /// </summary>
+        public int TimestampToleranceSeconds { get; set; } = 2;
+    }
+
+    /// <summary>
+    /// 文件对比方法
+    /// </summary>
+    public enum FileComparisonMethod
+    {
+        /// <summary>
+        /// 仅对比时间戳
+        /// </summary>
+        Timestamp,
+        
+        /// <summary>
+        /// 对比时间戳和文件大小
+        /// </summary>
+        TimestampAndSize,
+        
+        /// <summary>
+        /// 对比内容哈希（更准确但耗时）
+        /// </summary>
+        ContentHash
     }
 }

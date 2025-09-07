@@ -35,6 +35,11 @@ namespace WatchFile.Core.Monitoring
         public event EventHandler<MonitorStatusChangedEventArgs>? StatusChanged;
 
         /// <summary>
+        /// 离线变化检测完成事件
+        /// </summary>
+        public event EventHandler<OfflineChangesDetectedEventArgs>? OfflineChangesDetected;
+
+        /// <summary>
         /// 当前监控状态
         /// </summary>
         public MonitorStatus Status { get; private set; } = MonitorStatus.Stopped;
@@ -124,7 +129,10 @@ namespace WatchFile.Core.Monitoring
                     }
                 }
 
-                // 初始化临时文件
+                // 先执行离线变化检测（在创建watchfile之前）
+                await PerformOfflineChangeDetection();
+
+                // 初始化临时文件（为现有文件创建watchfile）
                 await _watchFileManager.InitializeWatchFilesAsync();
 
                 if (_config.Type == WatchType.Directory)
@@ -341,8 +349,7 @@ namespace WatchFile.Core.Monitoring
                     var parseResult = FileParser.ParseFile(filePath, _config.FileSettings);
                     if (parseResult.IsSuccess)
                     {
-                        args.ExtractedData = parseResult.Data;
-                        args.CurrentData = parseResult.Data; // 同时设置变化后的完整数据
+                        args.CurrentData = parseResult.Data; // 设置变化后的完整数据
                     }
                     else
                     {
@@ -441,6 +448,136 @@ namespace WatchFile.Core.Monitoring
                 Reason = reason,
                 Exception = exception
             });
+        }
+
+        /// <summary>
+        /// 执行离线变化检测
+        /// </summary>
+        private async Task PerformOfflineChangeDetection()
+        {
+            if (_globalSettings?.OfflineChangeDetection == null)
+            {
+                return;
+            }
+            
+            if (_globalSettings.OfflineChangeDetection.Enabled != true)
+            {
+                return;
+            }
+
+            var detectionStartTime = DateTime.Now;
+            var eventArgs = new OfflineChangesDetectedEventArgs
+            {
+                WatchItemId = _config.Id,
+                WatchItemName = _config.Name,
+                DetectionStartTime = detectionStartTime
+            };
+
+            try
+            {
+                // 执行离线变化检测
+                var offlineChanges = await _watchFileManager.DetectOfflineChangesAsync(_globalSettings.OfflineChangeDetection);
+                eventArgs.Changes = offlineChanges;
+                eventArgs.DetectionEndTime = DateTime.Now;
+
+                // 为每个检测到的变化触发相应的文件变化事件
+                foreach (var change in offlineChanges)
+                {
+                    await ProcessOfflineChange(change);
+                }
+
+                // 触发离线变化检测完成事件
+                OfflineChangesDetected?.Invoke(this, eventArgs);
+
+                if (offlineChanges.Count > 0)
+                {
+                    var summary = eventArgs.GetSummary();
+                    // 可以选择保留这个信息输出，因为它提供有用的监控反馈
+                    // Console.WriteLine($"[OFFLINE DETECTION] {_config.Name}: {summary}");
+                }
+            }
+            catch (Exception ex)
+            {
+                eventArgs.Exception = ex;
+                eventArgs.DetectionEndTime = DateTime.Now;
+                OfflineChangesDetected?.Invoke(this, eventArgs);
+                
+                // 不要重新抛出异常，避免阻止监控启动
+            }
+        }
+
+        /// <summary>
+        /// 处理检测到的离线变化
+        /// </summary>
+        private async Task ProcessOfflineChange(OfflineChangeInfo changeInfo)
+        {
+            try
+            {
+                var changeType = changeInfo.ChangeType switch
+                {
+                    OfflineChangeType.Created => WatcherChangeTypes.Created,
+                    OfflineChangeType.Modified => WatcherChangeTypes.Changed,
+                    OfflineChangeType.Deleted => WatcherChangeTypes.Deleted,
+                    OfflineChangeType.Recreated => WatcherChangeTypes.Created,
+                    _ => WatcherChangeTypes.Changed
+                };
+
+                // 创建文件变化事件参数
+                var args = new FileChangedEventArgs
+                {
+                    WatchItemId = _config.Id,
+                    WatchItemName = _config.Name,
+                    FilePath = changeInfo.FilePath,
+                    ChangeType = changeType,
+                    Timestamp = changeInfo.DetectedTime,
+                    IsOfflineChange = true // 标记为离线变化
+                };
+
+                // 设置文件大小
+                if (changeInfo.OriginalFileSize.HasValue)
+                {
+                    args.FileSize = changeInfo.OriginalFileSize.Value;
+                }
+
+                // 对于删除的文件，不需要解析内容
+                if (changeType == WatcherChangeTypes.Deleted)
+                {
+                    // 可以从删除的watchfile中读取之前的数据作为PreviousData
+                    OnFileChanged(args);
+                    return;
+                }
+
+                // 对于存在的文件，解析当前内容
+                if (File.Exists(changeInfo.FilePath))
+                {
+                    var parseResult = FileParser.ParseFile(changeInfo.FilePath, _config.FileSettings);
+                    if (parseResult.IsSuccess)
+                    {
+                        args.CurrentData = parseResult.Data;
+
+                        // 如果是修改事件，尝试获取变化详情
+                        if (changeType == WatcherChangeTypes.Changed)
+                        {
+                            var changeDetails = await _watchFileManager.ProcessFileChangeAsync(changeInfo.FilePath, changeType);
+                            args.ChangeDetails = changeDetails;
+                        }
+                    }
+                    else
+                    {
+                        args.Exception = parseResult.Exception;
+                    }
+                }
+
+                // 触发文件变化事件
+                OnFileChanged(args);
+                
+                // 🚀 处理自动删除（如果启用）
+                await HandleAutoDeleteIfEnabled(args, changeInfo.FilePath);
+            }
+            catch
+            {
+                // 静默处理异常，避免阻止监控启动
+            }
         }
 
         /// <summary>

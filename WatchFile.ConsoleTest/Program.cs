@@ -13,7 +13,7 @@ namespace WatchFile.ConsoleTest
 {
     class Program
     {
-        private static WatchFileManager? _manager;
+        private static WatchManager? _manager;
         
         // 🧪 安全删除测试配置
         private static bool _enableSafeDeleteTest = true;  // 是否启用安全删除测试
@@ -29,7 +29,7 @@ namespace WatchFile.ConsoleTest
             Console.InputEncoding = Encoding.UTF8;
             
             Console.WriteLine("=== WatchFile 智能监控程序 ===");
-            Console.WriteLine("版本: 2.3.1");
+            Console.WriteLine("版本: 2.4.0");
             Console.WriteLine("支持: .NET Framework 4.6.1+ 和 .NET 6+");
             Console.WriteLine("功能: CSV/Excel 文件智能变化分析");
             Console.WriteLine("优化: 工控环境大量小文件监控");
@@ -44,7 +44,7 @@ namespace WatchFile.ConsoleTest
                 var configPath = "D:\\aa\\abc.wat";
                 
                 // 创建管理器
-                _manager = new WatchFileManager(configPath);
+                _manager = new WatchManager(configPath);
 
                 Console.WriteLine("按任意键继续启动监控...");
                 Console.ReadKey();
@@ -53,6 +53,7 @@ namespace WatchFile.ConsoleTest
                 // 注册事件处理器
                 _manager.FileChanged += OnFileChanged;
                 _manager.StatusChanged += OnStatusChanged;
+                _manager.OfflineChangesDetected += OnOfflineChangesDetected;
 
                 Console.WriteLine("正在启动文件监控...");
                 await _manager.StartAsync();
@@ -64,7 +65,7 @@ namespace WatchFile.ConsoleTest
                 // 显示监控项状态
                 DisplayWatcherStatuses();
 
-                Console.WriteLine("\n=== 测试说明 ===");
+                Console.WriteLine("=== 测试说明 ===");
                 Console.WriteLine($"1. 手工修改监控目录下的 CSV 文件来测试监控功能");
                 Console.WriteLine("2. 手工添加新的 CSV 或 Excel 文件到监控目录");
                 Console.WriteLine("3. 手工删除监控目录下的文件");
@@ -74,6 +75,10 @@ namespace WatchFile.ConsoleTest
                 Console.WriteLine($"7. ⏱️  删除延迟: {_deleteDelaySeconds} 秒（模拟文件处理时间）");
                 Console.WriteLine($"8. 🛡️  安全删除: 自动清理主文件和缓存文件，不触发监控事件");
                 Console.WriteLine("9. 🔓 强制删除: 自动清除只读、隐藏、系统属性，解决权限问题");
+                Console.WriteLine("10.🔍 离线变化检测: 监控器重启时自动检测停机期间的文件变化");
+                Console.WriteLine("   - 新增文件: 创建对应的缓存文件");
+                Console.WriteLine("   - 修改文件: 与缓存文件对比，发现差异后触发变化事件");
+                Console.WriteLine("   - 删除文件: 清理对应的缓存文件");
                 Console.WriteLine();
 
                 ShowOperationMenu();
@@ -97,7 +102,7 @@ namespace WatchFile.ConsoleTest
                         case 'c':
                         case 'C':
                             Console.Clear();
-                            Console.WriteLine("WatchFile 监控程序 v2.2.0");
+                            Console.WriteLine("WatchFile 监控程序 v2.4.0");
                             Console.WriteLine("智能文件内容变化分析");
                             Console.WriteLine($"[成功] 监控状态: 运行中 ({_manager.ActiveWatchersCount} 个监控器)");
                             ShowOperationMenu();
@@ -161,6 +166,14 @@ namespace WatchFile.ConsoleTest
                 _ => $"[{e.ChangeType}]"
             };
             Console.WriteLine($"变化类型: {changeTypeDesc}");
+            if (e.IsOfflineChange)
+            {
+                Console.WriteLine($"检测模式: [离线变化检测] - 监控器重启时发现的变化");
+            }
+            else
+            {
+                Console.WriteLine($"检测模式: [实时监控] - 监控期间实时检测的变化");
+            }
             Console.WriteLine($"文件大小: {e.FileSize:N0} 字节");
             Console.WriteLine($"处理状态: {(e.IsSuccess ? "[成功]" : "[失败]")}");
             Console.WriteLine($"时间戳: {e.Timestamp:yyyy-MM-dd HH:mm:ss.fff}");
@@ -267,33 +280,8 @@ namespace WatchFile.ConsoleTest
                         Console.WriteLine($"       ... 还有 {e.CurrentData.Count - 5} 行数据");
                     }
                 }
-            }
-            // 兼容性：如果没有 CurrentData 但有 ExtractedData，则使用 ExtractedData
-            else if (e.ExtractedData != null && e.ExtractedData.Count > 0)
-            {
-                Console.WriteLine();
-                Console.WriteLine($"=== 当前文件数据 === (共 {e.DataRowCount} 行)");
                 
-                // 如果没有变化详情，显示前几行数据
-                if (e.ChangeDetails == null || !e.ChangeDetails.HasChanges)
-                {
-                    var displayCount = Math.Min(5, e.ExtractedData.Count);
-                    for (int i = 0; i < displayCount; i++)
-                    {
-                        Console.WriteLine($"   第 {i + 1} 行:");
-                        foreach (var column in e.ExtractedData[i])
-                        {
-                            Console.WriteLine($"       {column.Key}: {column.Value}");
-                        }
-                    }
-                    
-                    if (e.ExtractedData.Count > 5)
-                    {
-                        Console.WriteLine($"       ... 还有 {e.ExtractedData.Count - 5} 行数据");
-                    }
-                }
-                
-                // 显示文件统计信息
+                // 显示文件统计信息（当有变化详情时）
                 if (e.ChangeType == System.IO.WatcherChangeTypes.Changed && e.PreviousData != null)
                 {
                     Console.WriteLine();
@@ -392,6 +380,95 @@ namespace WatchFile.ConsoleTest
             }
         }
 
+        private static void OnOfflineChangesDetected(object? sender, OfflineChangesDetectedEventArgs e)
+        {
+            Console.WriteLine($"\n{'='*60}");
+            Console.WriteLine($"[离线变化检测] {DateTime.Now:HH:mm:ss.fff}");
+            Console.WriteLine($"{'='*60}");
+            Console.WriteLine($"监控项: {e.WatchItemName} ({e.WatchItemId})");
+            Console.WriteLine($"检测时间: {e.DetectionStartTime:HH:mm:ss.fff} - {e.DetectionEndTime:HH:mm:ss.fff}");
+            Console.WriteLine($"耗时: {(e.DetectionEndTime - e.DetectionStartTime).TotalMilliseconds:F0} 毫秒");
+            
+            if (!e.IsSuccess)
+            {
+                Console.WriteLine($"[错误] 检测失败: {e.Exception?.Message}");
+                Console.WriteLine($"{'='*60}\n");
+                return;
+            }
+
+            if (e.TotalChanges == 0)
+            {
+                Console.WriteLine("[结果] 未检测到文件变化");
+                Console.WriteLine($"{'='*60}\n");
+                return;
+            }
+
+            Console.WriteLine($"[结果] {e.GetSummary()}");
+            Console.WriteLine();
+
+            // 显示详细的变化列表
+            var stats = e.ChangeStatistics;
+            if (stats.ContainsKey(OfflineChangeType.Created))
+            {
+                var createdFiles = e.Changes.Where(c => c.ChangeType == OfflineChangeType.Created).ToList();
+                Console.WriteLine($"📝 新增文件 ({createdFiles.Count} 个):");
+                foreach (var change in createdFiles.Take(5))
+                {
+                    Console.WriteLine($"   + {Path.GetFileName(change.FilePath)} ({change.OriginalFileSize:N0} 字节)");
+                    Console.WriteLine($"     时间: {change.OriginalFileLastWriteTime:yyyy-MM-dd HH:mm:ss}");
+                }
+                if (createdFiles.Count > 5)
+                    Console.WriteLine($"     ... 还有 {createdFiles.Count - 5} 个新增文件");
+                Console.WriteLine();
+            }
+
+            if (stats.ContainsKey(OfflineChangeType.Modified))
+            {
+                var modifiedFiles = e.Changes.Where(c => c.ChangeType == OfflineChangeType.Modified).ToList();
+                Console.WriteLine($"📝 修改文件 ({modifiedFiles.Count} 个):");
+                foreach (var change in modifiedFiles.Take(5))
+                {
+                    Console.WriteLine($"   ~ {Path.GetFileName(change.FilePath)}");
+                    Console.WriteLine($"     原文件: {change.OriginalFileLastWriteTime:yyyy-MM-dd HH:mm:ss} ({change.OriginalFileSize:N0} 字节)");
+                    Console.WriteLine($"     缓存文件: {change.WatchFileLastWriteTime:yyyy-MM-dd HH:mm:ss} ({change.WatchFileSize:N0} 字节)");
+                    Console.WriteLine($"     变化说明: {change.Description}");
+                }
+                if (modifiedFiles.Count > 5)
+                    Console.WriteLine($"     ... 还有 {modifiedFiles.Count - 5} 个修改文件");
+                Console.WriteLine();
+            }
+
+            if (stats.ContainsKey(OfflineChangeType.Deleted))
+            {
+                var deletedFiles = e.Changes.Where(c => c.ChangeType == OfflineChangeType.Deleted).ToList();
+                Console.WriteLine($"🗑️ 删除文件 ({deletedFiles.Count} 个):");
+                foreach (var change in deletedFiles.Take(5))
+                {
+                    Console.WriteLine($"   - {Path.GetFileName(change.FilePath)}");
+                    Console.WriteLine($"     最后缓存: {change.WatchFileLastWriteTime:yyyy-MM-dd HH:mm:ss} ({change.WatchFileSize:N0} 字节)");
+                }
+                if (deletedFiles.Count > 5)
+                    Console.WriteLine($"     ... 还有 {deletedFiles.Count - 5} 个删除文件");
+                Console.WriteLine();
+            }
+
+            if (stats.ContainsKey(OfflineChangeType.Recreated))
+            {
+                var recreatedFiles = e.Changes.Where(c => c.ChangeType == OfflineChangeType.Recreated).ToList();
+                Console.WriteLine($"🔄 重建文件 ({recreatedFiles.Count} 个):");
+                foreach (var change in recreatedFiles.Take(5))
+                {
+                    Console.WriteLine($"   ↻ {Path.GetFileName(change.FilePath)} (重新出现)");
+                }
+                if (recreatedFiles.Count > 5)
+                    Console.WriteLine($"     ... 还有 {recreatedFiles.Count - 5} 个重建文件");
+                Console.WriteLine();
+            }
+
+            Console.WriteLine($"💡 提示: 离线检测到的变化将自动触发相应的文件变化事件进行处理");
+            Console.WriteLine($"{'='*60}\n");
+        }
+
         private static void DisplayWatcherStatuses()
         {
             if (_manager == null) return;
@@ -488,7 +565,15 @@ namespace WatchFile.ConsoleTest
                     LogLevel = "Info",
                     BufferTimeMs = 500,
                     MaxRetries = 3,
-                    LogFilePath = "logs/watchfile.log"
+                    LogFilePath = "logs/watchfile.log",
+                    OfflineChangeDetection = new OfflineChangeDetectionSettings
+                    {
+                        Enabled = true,
+                        TriggerEventsForNewFiles = false,
+                        TriggerEventsForDeletedFiles = true,
+                        ComparisonMethod = FileComparisonMethod.TimestampAndSize,
+                        TimestampToleranceSeconds = 2
+                    }
                 },
                 WatchItems = new List<WatchItem>
                 {

@@ -15,7 +15,7 @@ namespace WatchFile.Core
     /// <summary>
     /// 文件监控管理器 - 库的主入口点
     /// </summary>
-    public class WatchFileManager : IDisposable
+    public class WatchManager : IDisposable
     {
         private readonly ConcurrentDictionary<string, DirectoryWatcher> _watchers = new();
         private readonly List<IFileChangedHandler> _handlers = new();
@@ -32,6 +32,11 @@ namespace WatchFile.Core
         /// 监控状态变化事件
         /// </summary>
         public event EventHandler<MonitorStatusChangedEventArgs>? StatusChanged;
+
+        /// <summary>
+        /// 离线变化检测完成事件
+        /// </summary>
+        public event EventHandler<OfflineChangesDetectedEventArgs>? OfflineChangesDetected;
 
         /// <summary>
         /// 是否正在运行
@@ -53,7 +58,7 @@ namespace WatchFile.Core
         /// 初始化文件监控管理器
         /// </summary>
         /// <param name="configPath">配置文件路径</param>
-        public WatchFileManager(string? configPath = null)
+        public WatchManager(string? configPath = null)
         {
             _configManager = new ConfigurationManager(configPath);
             
@@ -76,7 +81,7 @@ namespace WatchFile.Core
         public async Task StartAsync()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(WatchFileManager));
+                throw new ObjectDisposedException(nameof(WatchManager));
 
             if (IsRunning)
                 return;
@@ -136,7 +141,7 @@ namespace WatchFile.Core
         public async Task ReloadConfigurationAsync()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(WatchFileManager));
+                throw new ObjectDisposedException(nameof(WatchManager));
 
             var wasRunning = IsRunning;
             
@@ -247,9 +252,9 @@ namespace WatchFile.Core
             if (_configuration == null)
                 return;
 
-            var createTasks = _configuration.WatchItems
-                .Where(item => item.Enabled)
-                .Select(CreateWatcherForItem);
+            var enabledItems = _configuration.WatchItems.Where(item => item.Enabled).ToList();
+
+            var createTasks = enabledItems.Select(CreateWatcherForItem);
 
             await Task.WhenAll(createTasks);
         }
@@ -263,6 +268,7 @@ namespace WatchFile.Core
                 // 订阅事件
                 watcher.FileChanged += OnWatcherFileChanged;
                 watcher.StatusChanged += OnWatcherStatusChanged;
+                watcher.OfflineChangesDetected += OnWatcherOfflineChangesDetected;
 
                 // 添加到字典
                 _watchers.TryAdd(item.Id, watcher);
@@ -309,6 +315,11 @@ namespace WatchFile.Core
         private void OnWatcherStatusChanged(object? sender, MonitorStatusChangedEventArgs e)
         {
             StatusChanged?.Invoke(this, e);
+        }
+
+        private void OnWatcherOfflineChangesDetected(object? sender, OfflineChangesDetectedEventArgs e)
+        {
+            OfflineChangesDetected?.Invoke(this, e);
         }
 
         /// <summary>

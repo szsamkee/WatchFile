@@ -7,7 +7,7 @@
     
     <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.3.1</PackageVersion>
+    <PackageVersion>2.4.0</PackageVersion>
     <Authors>不会写又爱写代码的老祁</Authors>
     <Company>老祁个人工作室</Company>
     <Product>WatchFile</Product>

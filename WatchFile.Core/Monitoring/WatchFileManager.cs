@@ -621,5 +621,257 @@ namespace WatchFile.Core.Monitoring
                 Console.WriteLine($"[AUTO DELETE] 缓存文件删除警告: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// 检测离线期间的文件变化
+        /// </summary>
+        /// <param name="offlineDetectionSettings">离线检测配置</param>
+        /// <returns>检测到的变化列表</returns>
+        public async Task<List<OfflineChangeInfo>> DetectOfflineChangesAsync(OfflineChangeDetectionSettings offlineDetectionSettings)
+        {
+            var changes = new List<OfflineChangeInfo>();
+
+            if (!offlineDetectionSettings.Enabled)
+            {
+                return changes;
+            }
+
+            try
+            {
+                // 获取当前存在的所有符合监控规则的文件
+                var currentFiles = GetCurrentMonitoredFiles();
+                
+                // 检测每个当前文件的变化
+                foreach (var filePath in currentFiles)
+                {
+                    var changeInfo = await DetectSingleFileOfflineChange(filePath, offlineDetectionSettings);
+                    if (changeInfo != null)
+                    {
+                        changes.Add(changeInfo);
+                    }
+                }
+
+                // 检测已删除的文件（存在watchfile但原文件不存在）
+                if (offlineDetectionSettings.TriggerEventsForDeletedFiles)
+                {
+                    var deletedFiles = await DetectDeletedFiles(currentFiles);
+                    changes.AddRange(deletedFiles);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"离线变化检测失败: {ex.Message}", ex);
+            }
+
+            return changes;
+        }
+
+        /// <summary>
+        /// 检测单个文件的离线变化
+        /// </summary>
+        private async Task<OfflineChangeInfo?> DetectSingleFileOfflineChange(string filePath, OfflineChangeDetectionSettings settings)
+        {
+            try
+            {
+                var watchFilePath = GetWatchFilePath(filePath);
+                
+                // 如果watchfile不存在，说明是新文件
+                if (!File.Exists(watchFilePath))
+                {
+                    if (!settings.TriggerEventsForNewFiles)
+                    {
+                        return null;
+                    }
+
+                    var fileInfo = new FileInfo(filePath);
+                    return new OfflineChangeInfo
+                    {
+                        FilePath = filePath,
+                        ChangeType = OfflineChangeType.Created,
+                        OriginalFileLastWriteTime = fileInfo.LastWriteTime,
+                        OriginalFileSize = fileInfo.Length,
+                        Description = "检测到新文件"
+                    };
+                }
+
+                // 对比文件变化
+                return await CompareFileWithWatchFile(filePath, watchFilePath, settings);
+            }
+            catch (Exception ex)
+            {
+                return new OfflineChangeInfo
+                {
+                    FilePath = filePath,
+                    ChangeType = OfflineChangeType.Modified,
+                    Description = $"检测异常: {ex.Message}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// 对比原文件与watchfile的差异
+        /// </summary>
+        private async Task<OfflineChangeInfo?> CompareFileWithWatchFile(string filePath, string watchFilePath, OfflineChangeDetectionSettings settings)
+        {
+            var originalInfo = new FileInfo(filePath);
+            var watchInfo = new FileInfo(watchFilePath);
+
+            var changeInfo = new OfflineChangeInfo
+            {
+                FilePath = filePath,
+                OriginalFileLastWriteTime = originalInfo.LastWriteTime,
+                WatchFileLastWriteTime = watchInfo.LastWriteTime,
+                OriginalFileSize = originalInfo.Length,
+                WatchFileSize = watchInfo.Length
+            };
+
+            bool hasChanged = false;
+            var reasons = new List<string>();
+
+            // 时间戳对比
+            var timeDiff = Math.Abs((originalInfo.LastWriteTime - watchInfo.LastWriteTime).TotalSeconds);
+            if (timeDiff > settings.TimestampToleranceSeconds)
+            {
+                hasChanged = true;
+                reasons.Add($"时间戳差异{timeDiff:F0}秒");
+            }
+
+            // 文件大小对比
+            if (settings.ComparisonMethod == FileComparisonMethod.TimestampAndSize || 
+                settings.ComparisonMethod == FileComparisonMethod.ContentHash)
+            {
+                if (originalInfo.Length != watchInfo.Length)
+                {
+                    hasChanged = true;
+                    reasons.Add($"大小差异({originalInfo.Length} vs {watchInfo.Length})");
+                }
+            }
+
+            // 内容哈希对比（可选）
+            if (settings.ComparisonMethod == FileComparisonMethod.ContentHash && !hasChanged)
+            {
+                var originalHash = await CalculateFileHashAsync(filePath);
+                var watchHash = await CalculateFileHashAsync(watchFilePath);
+                
+                if (originalHash != watchHash)
+                {
+                    hasChanged = true;
+                    reasons.Add("内容哈希不匹配");
+                }
+            }
+
+            if (hasChanged)
+            {
+                changeInfo.ChangeType = OfflineChangeType.Modified;
+                changeInfo.Description = $"检测到文件变化: {string.Join(", ", reasons)}";
+                return changeInfo;
+            }
+
+            return null; // 无变化
+        }
+
+        /// <summary>
+        /// 检测已删除的文件
+        /// </summary>
+        private Task<List<OfflineChangeInfo>> DetectDeletedFiles(List<string> currentFiles)
+        {
+            var deletedFiles = new List<OfflineChangeInfo>();
+
+            try
+            {
+                if (!Directory.Exists(_watchDirectory))
+                    return Task.FromResult(deletedFiles);
+
+                var watchFiles = Directory.GetFiles(_watchDirectory, "*" + _config.WatchFileSettings.WatchFileExtension);
+                
+                foreach (var watchFilePath in watchFiles)
+                {
+                    var originalFilePath = GetOriginalFilePath(watchFilePath);
+                    
+                    // 如果原文件不存在，说明被删除了
+                    if (!currentFiles.Contains(originalFilePath) && !File.Exists(originalFilePath))
+                    {
+                        var watchInfo = new FileInfo(watchFilePath);
+                        deletedFiles.Add(new OfflineChangeInfo
+                        {
+                            FilePath = originalFilePath,
+                            ChangeType = OfflineChangeType.Deleted,
+                            WatchFileLastWriteTime = watchInfo.LastWriteTime,
+                            WatchFileSize = watchInfo.Length,
+                            Description = "检测到文件已被删除"
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 记录但不抛出异常
+                Console.WriteLine($"[OFFLINE DETECTION] 检测删除文件时出错: {ex.Message}");
+            }
+
+            return Task.FromResult(deletedFiles);
+        }
+
+        /// <summary>
+        /// 获取当前所有符合监控规则的文件
+        /// </summary>
+        private List<string> GetCurrentMonitoredFiles()
+        {
+            var files = new List<string>();
+
+            try
+            {
+                if (_config.Type == WatchType.Directory && Directory.Exists(_config.Path))
+                {
+                    var searchOption = _config.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+                    var allFiles = Directory.GetFiles(_config.Path, "*.*", searchOption);
+                    
+                    files.AddRange(allFiles.Where(ShouldMonitorFile));
+                }
+                else if (_config.Type == WatchType.File && File.Exists(_config.Path))
+                {
+                    files.Add(_config.Path);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[OFFLINE DETECTION] 获取监控文件列表失败: {ex.Message}");
+            }
+
+            return files;
+        }
+
+        /// <summary>
+        /// 从watchfile路径获取原始文件路径
+        /// </summary>
+        private string GetOriginalFilePath(string watchFilePath)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(watchFilePath);
+            var basePath = _config.Type == WatchType.Directory ? _config.Path : Path.GetDirectoryName(_config.Path)!;
+            
+            // 简化版本：假设watchfile与原文件同名（不含扩展名部分）
+            // 实际实现可能需要更复杂的映射逻辑
+            var possibleExtensions = new[] { ".csv", ".xlsx", ".xls", ".txt" };
+            
+            foreach (var ext in possibleExtensions)
+            {
+                var possiblePath = Path.Combine(basePath, fileName + ext);
+                if (File.Exists(possiblePath))
+                    return possiblePath;
+            }
+            
+            return Path.Combine(basePath, fileName);
+        }
+
+        /// <summary>
+        /// 计算文件内容哈希
+        /// </summary>
+        private async Task<string> CalculateFileHashAsync(string filePath)
+        {
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+            using var sha1 = System.Security.Cryptography.SHA1.Create();
+            var hash = await Task.Run(() => sha1.ComputeHash(stream));
+            return Convert.ToBase64String(hash);
+        }
     }
 }

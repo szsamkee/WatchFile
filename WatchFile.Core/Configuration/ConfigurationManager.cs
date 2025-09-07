@@ -190,7 +190,15 @@ namespace WatchFile.Core.Configuration
                     LogLevel = "Info",
                     BufferTimeMs = 500,
                     MaxRetries = 3,
-                    LogFilePath = "logs/watchfile.log"
+                    LogFilePath = "logs/watchfile.log",
+                    OfflineChangeDetection = new OfflineChangeDetectionSettings
+                    {
+                        Enabled = true,
+                        TriggerEventsForNewFiles = false,
+                        TriggerEventsForDeletedFiles = true,
+                        ComparisonMethod = FileComparisonMethod.TimestampAndSize,
+                        TimestampToleranceSeconds = 2
+                    }
                 },
                 WatchItems = new List<WatchItem>
                 {
