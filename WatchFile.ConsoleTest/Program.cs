@@ -308,7 +308,11 @@ namespace WatchFile.ConsoleTest
             
             Console.WriteLine($"{'='*60}");
 
-            // 🚀 新增：安全删除测试功能
+            // 🚀 新功能演示：智能文件删除控制
+            // 用户可以根据业务处理结果控制文件是否删除
+            DemonstrateSmartFileDeletion(e);
+
+            // 🚀 安全删除测试功能（配置驱动的自动删除）
             // 模拟工控环境：文件处理完成后自动删除，避免目录文件堆积
             await TestSafeFileDelete(e);
         }
@@ -618,6 +622,21 @@ namespace WatchFile.ConsoleTest
                                     Required = false
                                 }
                             }
+                        },
+                        DeleteAfterProcessing = true,  // 启用演示智能删除功能
+                        DeletePolicy = new DeletePolicySettings
+                        {
+                            Strategy = DeleteStrategy.RespectProcessResult,
+                            DeleteOn = new List<string> { "Success" },
+                            KeepOn = new List<string> { "Failed", "SuccessButKeep", "Skipped" },
+                            RetryPolicy = new RetryPolicySettings
+                            {
+                                Enabled = true,
+                                MaxRetries = 3,
+                                RetryInterval = "00:05:00",
+                                RetryOn = new List<string> { "Failed" },
+                                ExponentialBackoff = true
+                            }
                         }
                     }
                 }
@@ -671,6 +690,91 @@ namespace WatchFile.ConsoleTest
             catch
             {
                 Console.WriteLine("❌ 输入错误，保持原设置");
+            }
+        }
+
+        /// <summary>
+        /// 演示智能文件删除控制功能
+        /// </summary>
+        private static void DemonstrateSmartFileDeletion(FileChangedEventArgs e)
+        {
+            try
+            {
+                // 🎯 业务逻辑示例：根据文件内容和业务规则决定处理结果
+                
+                // 示例1：根据文件大小判断
+                if (e.FileSize == 0)
+                {
+                    e.ProcessResult = WatchFile.Core.Events.FileProcessResult.Skipped;
+                    e.ProcessResultReason = "空文件，跳过处理";
+                    Console.WriteLine("📋 [处理结果] 空文件 -> 跳过处理，文件保留");
+                    return;
+                }
+                
+                // 示例2：根据文件名模式判断
+                var fileName = Path.GetFileName(e.FilePath).ToLower();
+                if (fileName.Contains("temp") || fileName.Contains("tmp"))
+                {
+                    e.ProcessResult = WatchFile.Core.Events.FileProcessResult.Success;
+                    e.ProcessResultReason = "临时文件，可以删除";
+                    Console.WriteLine("📋 [处理结果] 临时文件 -> 处理成功，可以删除");
+                    return;
+                }
+                
+                // 示例3：根据数据内容判断（模拟业务处理）
+                if (e.CurrentData != null && e.CurrentData.Count > 0)
+                {
+                    var recordCount = e.CurrentData.Count;
+                    
+                    if (recordCount < 10)
+                    {
+                        // 数据量少，可能需要等待更多数据一起处理
+                        e.ProcessResult = WatchFile.Core.Events.FileProcessResult.SuccessButKeep;
+                        e.ProcessResultReason = $"数据量较少({recordCount}行)，保留等待批量处理";
+                        Console.WriteLine($"📋 [处理结果] 小数据量({recordCount}行) -> 保留用于批量处理");
+                        return;
+                    }
+                    else if (recordCount > 1000)
+                    {
+                        // 数据量大，需要特殊处理
+                        e.ProcessResult = WatchFile.Core.Events.FileProcessResult.SuccessButKeep;
+                        e.ProcessResultReason = $"大数据文件({recordCount}行)，需要人工审核";
+                        Console.WriteLine($"📋 [处理结果] 大数据量({recordCount}行) -> 需要审核，文件保留");
+                        return;
+                    }
+                }
+                
+                // 示例4：模拟网络异常等错误情况
+                if (DateTime.Now.Second % 10 == 0) // 每10秒模拟一次"网络异常"
+                {
+                    e.ProcessResult = WatchFile.Core.Events.FileProcessResult.Failed;
+                    e.ProcessResultReason = "模拟网络异常，需要重试";
+                    Console.WriteLine("📋 [处理结果] 模拟网络异常 -> 处理失败，保留重试");
+                    return;
+                }
+                
+                // 示例5：模拟工作时间判断
+                var currentHour = DateTime.Now.Hour;
+                if (currentHour < 9 || currentHour > 17)
+                {
+                    e.ProcessResult = WatchFile.Core.Events.FileProcessResult.SuccessButKeep;
+                    e.ProcessResultReason = "非工作时间，保留等待工作时间处理";
+                    Console.WriteLine("📋 [处理结果] 非工作时间 -> 保留等待工作时间处理");
+                    return;
+                }
+                
+                // 默认情况：正常处理，可以删除
+                e.ProcessResult = WatchFile.Core.Events.FileProcessResult.Success;
+                e.ProcessResultReason = "正常处理完成";
+                Console.WriteLine("📋 [处理结果] 正常处理 -> 成功，可以删除文件");
+                
+            }
+            catch (Exception ex)
+            {
+                // 处理异常情况
+                e.ProcessResult = WatchFile.Core.Events.FileProcessResult.Failed;
+                e.ProcessResultReason = $"处理异常: {ex.Message}";
+                Console.WriteLine($"📋 [处理结果] 异常 -> 处理失败: {ex.Message}");
             }
         }
     }

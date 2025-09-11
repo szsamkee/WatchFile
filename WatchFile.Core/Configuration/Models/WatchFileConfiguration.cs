@@ -125,6 +125,11 @@ namespace WatchFile.Core.Configuration.Models
         /// 警告：启用此选项将导致文件被永久删除，请谨慎使用
         /// </summary>
         public bool DeleteAfterProcessing { get; set; } = false;
+
+        /// <summary>
+        /// 删除策略配置（当DeleteAfterProcessing为true时生效）
+        /// </summary>
+        public DeletePolicySettings DeletePolicy { get; set; } = new DeletePolicySettings();
     }
 
     /// <summary>
@@ -412,5 +417,83 @@ namespace WatchFile.Core.Configuration.Models
         /// 对比内容哈希（更准确但耗时）
         /// </summary>
         ContentHash
+    }
+
+    /// <summary>
+    /// 删除策略设置
+    /// </summary>
+    public class DeletePolicySettings
+    {
+        /// <summary>
+        /// 删除策略类型
+        /// </summary>
+        public DeleteStrategy Strategy { get; set; } = DeleteStrategy.RespectProcessResult;
+
+        /// <summary>
+        /// 需要删除文件的处理结果列表
+        /// </summary>
+        public List<string> DeleteOn { get; set; } = new List<string> { "Success" };
+
+        /// <summary>
+        /// 需要保留文件的处理结果列表
+        /// </summary>
+        public List<string> KeepOn { get; set; } = new List<string> { "Failed", "SuccessButKeep", "Skipped" };
+
+        /// <summary>
+        /// 重试策略配置
+        /// </summary>
+        public RetryPolicySettings RetryPolicy { get; set; } = new RetryPolicySettings();
+    }
+
+    /// <summary>
+    /// 删除策略类型
+    /// </summary>
+    public enum DeleteStrategy
+    {
+        /// <summary>
+        /// 总是删除（忽略处理结果）
+        /// </summary>
+        Always,
+        
+        /// <summary>
+        /// 从不删除（忽略处理结果）
+        /// </summary>
+        Never,
+        
+        /// <summary>
+        /// 根据处理结果决定是否删除（默认）
+        /// </summary>
+        RespectProcessResult
+    }
+
+    /// <summary>
+    /// 重试策略设置
+    /// </summary>
+    public class RetryPolicySettings
+    {
+        /// <summary>
+        /// 是否启用重试
+        /// </summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>
+        /// 最大重试次数
+        /// </summary>
+        public int MaxRetries { get; set; } = 3;
+
+        /// <summary>
+        /// 重试间隔（TimeSpan格式：hh:mm:ss）
+        /// </summary>
+        public string RetryInterval { get; set; } = "00:05:00";
+
+        /// <summary>
+        /// 需要重试的处理结果列表
+        /// </summary>
+        public List<string> RetryOn { get; set; } = new List<string> { "Failed" };
+
+        /// <summary>
+        /// 是否使用指数退避
+        /// </summary>
+        public bool ExponentialBackoff { get; set; } = true;
     }
 }

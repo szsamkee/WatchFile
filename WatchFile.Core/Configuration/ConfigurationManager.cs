@@ -230,6 +230,21 @@ namespace WatchFile.Core.Configuration
                                     Required = true
                                 }
                             }
+                        },
+                        DeleteAfterProcessing = false,
+                        DeletePolicy = new DeletePolicySettings
+                        {
+                            Strategy = DeleteStrategy.RespectProcessResult,
+                            DeleteOn = new List<string> { "Success" },
+                            KeepOn = new List<string> { "Failed", "SuccessButKeep", "Skipped" },
+                            RetryPolicy = new RetryPolicySettings
+                            {
+                                Enabled = true,
+                                MaxRetries = 3,
+                                RetryInterval = "00:05:00",
+                                RetryOn = new List<string> { "Failed" },
+                                ExponentialBackoff = true
+                            }
                         }
                     }
                 }

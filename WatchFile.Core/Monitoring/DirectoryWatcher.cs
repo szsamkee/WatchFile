@@ -358,10 +358,10 @@ namespace WatchFile.Core.Monitoring
                     }
                 }
 
-                // 触发文件变化事件
+                // 触发文件变化事件（同步调用，确保用户可以设置ProcessResult）
                 OnFileChanged(args);
                 
-                // 🚀 新增：自动删除处理
+                // 🚀 智能删除：根据用户设置的ProcessResult决定是否删除文件
                 await HandleAutoDeleteIfEnabled(args, filePath);
             }
             catch (Exception ex)
@@ -385,6 +385,16 @@ namespace WatchFile.Core.Monitoring
                 if (!_config.DeleteAfterProcessing)
                     return;
 
+                // 根据删除策略决定是否删除文件
+                if (!ShouldDeleteFile(args))
+                {
+                    if (!string.IsNullOrEmpty(args.ProcessResultReason))
+                    {
+                        Console.WriteLine($"[AUTO DELETE] 文件保留: {Path.GetFileName(filePath)} - {args.ProcessResultReason}");
+                    }
+                    return;
+                }
+
                 // 只对成功处理的创建和修改事件执行删除
                 if (!args.IsSuccess || 
                     (args.ChangeType != WatcherChangeTypes.Created && args.ChangeType != WatcherChangeTypes.Changed))
@@ -394,7 +404,7 @@ namespace WatchFile.Core.Monitoring
                 if (!File.Exists(filePath))
                     return;
 
-                Console.WriteLine($"[AUTO DELETE] 检测到配置启用自动删除，开始处理文件: {Path.GetFileName(filePath)}");
+                Console.WriteLine($"[AUTO DELETE] 根据处理结果({args.ProcessResult})删除文件: {Path.GetFileName(filePath)}");
 
                 // 等待一段时间确保文件处理完成
                 await Task.Delay(1000);
@@ -407,6 +417,39 @@ namespace WatchFile.Core.Monitoring
             {
                 Console.WriteLine($"[AUTO DELETE] 自动删除处理异常: {ex.Message}");
                 // 不要重新抛出异常，避免影响监控器运行
+            }
+        }
+
+        /// <summary>
+        /// 根据删除策略和处理结果判断是否应该删除文件
+        /// </summary>
+        private bool ShouldDeleteFile(FileChangedEventArgs args)
+        {
+            var deletePolicy = _config.DeletePolicy;
+            
+            // 根据删除策略类型判断
+            switch (deletePolicy.Strategy)
+            {
+                case DeleteStrategy.Always:
+                    return true;
+                    
+                case DeleteStrategy.Never:
+                    return false;
+                    
+                case DeleteStrategy.RespectProcessResult:
+                default:
+                    var processResultString = args.ProcessResult.ToString();
+                    
+                    // 检查是否在删除列表中
+                    if (deletePolicy.DeleteOn.Contains(processResultString))
+                        return true;
+                        
+                    // 检查是否在保留列表中
+                    if (deletePolicy.KeepOn.Contains(processResultString))
+                        return false;
+                        
+                    // 默认行为：Success删除，其他保留
+                    return args.ProcessResult == WatchFile.Core.Events.FileProcessResult.Success;
             }
         }
 

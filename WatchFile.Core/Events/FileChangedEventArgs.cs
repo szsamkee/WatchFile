@@ -74,6 +74,16 @@ namespace WatchFile.Core.Events
         /// 是否为离线变化检测（监控器重启时检测到的变化）
         /// </summary>
         public bool IsOfflineChange { get; set; } = false;
+
+        /// <summary>
+        /// 用户处理结果（用户在事件处理中设置，默认为Success）
+        /// </summary>
+        public FileProcessResult ProcessResult { get; set; } = FileProcessResult.Success;
+
+        /// <summary>
+        /// 处理结果备注（可选，用于日志记录和调试）
+        /// </summary>
+        public string ProcessResultReason { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -303,5 +313,31 @@ namespace WatchFile.Core.Events
         /// 删除字段
         /// </summary>
         Removed
+    }
+
+    /// <summary>
+    /// 文件处理结果
+    /// </summary>
+    public enum FileProcessResult
+    {
+        /// <summary>
+        /// 处理成功，可以删除文件（默认值）
+        /// </summary>
+        Success,
+        
+        /// <summary>
+        /// 处理成功，但保留文件（用于下次离线检测）
+        /// </summary>
+        SuccessButKeep,
+        
+        /// <summary>
+        /// 处理失败，保留文件重试
+        /// </summary>
+        Failed,
+        
+        /// <summary>
+        /// 跳过处理，保留文件
+        /// </summary>
+        Skipped
     }
 }
