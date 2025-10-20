@@ -48,7 +48,9 @@ namespace WatchFile.Core.Parsing
             
             try
             {
-                var encoding = GetEncoding(settings.Encoding);
+                // 🔍 尝试自动检测编码
+                var detectedEncoding = DetectFileEncoding(filePath);
+                var encoding = detectedEncoding ?? GetEncoding(settings.Encoding);
                 
                 using var reader = new StreamReader(filePath, encoding);
                 using var csv = new CsvReader(reader, CreateCsvConfiguration(settings));
@@ -198,10 +200,16 @@ namespace WatchFile.Core.Parsing
                     }
 
                     var convertedValue = ConvertValue(value, mapping);
-                    if (convertedValue != null || !mapping.Required)
+                    
+                    // 🔧 修复：即使值为null，也应该添加字段到记录中
+                    // 对于Required字段，如果值为null则使用类型默认值
+                    if (convertedValue == null && mapping.Required)
                     {
-                        record[mapping.TargetName] = convertedValue ?? DBNull.Value;
+                        // Required字段为null时，根据数据类型提供默认值
+                        convertedValue = GetDefaultValueForType(mapping.DataType);
                     }
+                    
+                    record[mapping.TargetName] = convertedValue ?? DBNull.Value;
                 }
                 catch (Exception ex)
                 {
@@ -298,12 +306,28 @@ namespace WatchFile.Core.Parsing
 
         private static object? ConvertValue(object? value, ColumnMapping mapping)
         {
-            if (value == null || value == DBNull.Value || string.IsNullOrWhiteSpace(value.ToString()))
+            // 🔧 修复：正确处理空值字段
+            // 空值可能是：null, DBNull, 空字符串, 或只包含空白字符的字符串
+            if (value == null || 
+                value == DBNull.Value || 
+                string.IsNullOrWhiteSpace(value.ToString()))
             {
-                return mapping.Required ? throw new ArgumentException($"必需字段 '{mapping.TargetName}' 不能为空") : null;
+                // 如果是必需字段且为空，不抛出异常，而是返回null让上层处理
+                // 上层会根据数据类型提供默认值
+                if (mapping.Required)
+                {
+                    return null; // 让上层的ExtractDataFromCsvRecord处理默认值
+                }
+                return null; // 非必需字段直接返回null
             }
 
             var stringValue = value.ToString()!.Trim();
+            
+            // 再次检查trim后是否为空
+            if (string.IsNullOrEmpty(stringValue))
+            {
+                return mapping.Required ? null : null;
+            }
 
             try
             {
@@ -333,6 +357,22 @@ namespace WatchFile.Core.Parsing
             return DateTime.ParseExact(value, format, CultureInfo.InvariantCulture);
         }
 
+        /// <summary>
+        /// 根据数据类型获取默认值
+        /// </summary>
+        private static object GetDefaultValueForType(DataType dataType)
+        {
+            return dataType switch
+            {
+                DataType.String => string.Empty,
+                DataType.Integer => 0,
+                DataType.Decimal => 0.0m,
+                DataType.Boolean => false,
+                DataType.DateTime => DateTime.MinValue,
+                _ => string.Empty
+            };
+        }
+
         private static Encoding GetEncoding(string encodingName)
         {
             // 🔧 修复：自动注册编码提供程序以支持 GB2312、GBK 等编码
@@ -355,7 +395,10 @@ namespace WatchFile.Core.Parsing
                     "GBK" => Encoding.GetEncoding("GBK"),
                     "GB2312" => Encoding.GetEncoding("GB2312"),
                     "ASCII" => Encoding.ASCII,
-                    "UNICODE" => Encoding.Unicode,
+                    "UNICODE" => Encoding.Unicode,  // UTF-16 LE
+                    "UTF-16" or "UTF16" => Encoding.Unicode,  // UTF-16 LE
+                    "UTF-16BE" or "UTF16BE" => Encoding.BigEndianUnicode,  // UTF-16 BE
+                    "UTF-32" or "UTF32" => Encoding.UTF32,
                     _ => Encoding.UTF8
                 };
             }
@@ -364,6 +407,90 @@ namespace WatchFile.Core.Parsing
                 // 如果指定的编码不可用，返回 UTF-8 作为后备
                 return Encoding.UTF8;
             }
+        }
+
+        /// <summary>
+        /// 自动检测文件编码（通过BOM）
+        /// </summary>
+        private static Encoding DetectFileEncoding(string filePath)
+        {
+            // 🔧 先注册编码提供程序，以支持 GBK 等编码
+            try 
+            {
+                Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            }
+            catch 
+            {
+                // 静默忽略注册错误（可能已经注册过）
+            }
+            
+            // 读取文件前4个字节来检测BOM
+            var bom = new byte[4];
+            using (var file = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                file.Read(bom, 0, 4);
+            }
+
+            // 检测BOM
+            // UTF-8: EF BB BF
+            if (bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF)
+            {
+                return Encoding.UTF8;
+            }
+            
+            // UTF-16 LE: FF FE
+            if (bom[0] == 0xFF && bom[1] == 0xFE && bom[2] != 0x00)
+            {
+                return Encoding.Unicode;
+            }
+            
+            // UTF-16 BE: FE FF
+            if (bom[0] == 0xFE && bom[1] == 0xFF)
+            {
+                return Encoding.BigEndianUnicode;
+            }
+            
+            // UTF-32 LE: FF FE 00 00
+            if (bom[0] == 0xFF && bom[1] == 0xFE && bom[2] == 0x00 && bom[3] == 0x00)
+            {
+                return Encoding.UTF32;
+            }
+            
+            // UTF-32 BE: 00 00 FE FF
+            if (bom[0] == 0x00 && bom[1] == 0x00 && bom[2] == 0xFE && bom[3] == 0xFF)
+            {
+                try
+                {
+                    return Encoding.GetEncoding("UTF-32BE");
+                }
+                catch
+                {
+                    return Encoding.UTF32;
+                }
+            }
+
+            // 🔧 智能检测：如果没有BOM，尝试判断是否为中文编码
+            // D6 B1 C1 F7 等字节范围通常是GB2312/GBK编码
+            if (bom[0] >= 0xB0 && bom[0] <= 0xF7)
+            {
+                try
+                {
+                    return Encoding.GetEncoding("GBK");
+                }
+                catch
+                {
+                    try
+                    {
+                        return Encoding.GetEncoding("GB2312");
+                    }
+                    catch
+                    {
+                        return null; // 返回null，使用配置的编码
+                    }
+                }
+            }
+
+            return null;
         }
     }
 }

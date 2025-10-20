@@ -7,12 +7,12 @@
     
     <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.5.0</PackageVersion>
+    <PackageVersion>2.6.1</PackageVersion>
     <Authors>不会写又爱写代码的老祁</Authors>
     <Company>老祁个人工作室</Company>
     <Product>WatchFile</Product>
-    <Description>智能文件监控与内容变化分析库，专为工控环境设计，支持CSV/Excel文件的详细差异分析。A cross-platform intelligent file monitoring library with advanced content change analysis, specially optimized for industrial environments.</Description>
-    <Summary>高性能文件监控库，提供详细的内容变化分析</Summary>
+    <Description>智能文件监控与内容变化分析库，专为工控环境设计，支持CSV/Excel文件的详细差异分析、自动编码检测、空值处理和智能删除策略。A cross-platform intelligent file monitoring library with advanced content change analysis, auto encoding detection, and smart deletion policies.</Description>
+    <Summary>高性能文件监控库，提供详细的内容变化分析和自动编码检测</Summary>
     <PackageTags>file-monitoring;csv;excel;change-detection;industrial;dotnet;filewatcher;content-analysis;diff-tracking</PackageTags>
     <PackageProjectUrl>https://github.com/szsamkee/WatchFile</PackageProjectUrl>
     <RepositoryUrl>https://github.com/szsamkee/WatchFile</RepositoryUrl>

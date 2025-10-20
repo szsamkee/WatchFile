@@ -260,6 +260,45 @@ namespace WatchFile.ConsoleTest
             if (e.CurrentData != null && e.CurrentData.Count > 0)
             {
                 Console.WriteLine();
+                Console.WriteLine($"{'='*80}");
+                Console.WriteLine($"=== 📊 当前文件数据预览 === (共 {e.DataRowCount} 行)");
+                Console.WriteLine($"{'='*80}");
+                
+                // 显示前几行数据（表格格式）
+                DisplayDataTable("当前数据", e.CurrentData, 5);
+            }
+            
+            // 显示之前的数据对比
+            if (e.ChangeType == System.IO.WatcherChangeTypes.Changed && e.PreviousData != null && e.PreviousData.Count > 0)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"{'='*80}");
+                Console.WriteLine($"=== 📋 变化前的数据预览 === (共 {e.PreviousData.Count} 行)");
+                Console.WriteLine($"{'='*80}");
+                
+                // 显示之前的数据
+                DisplayDataTable("之前数据", e.PreviousData, 5);
+                
+                Console.WriteLine();
+                Console.WriteLine("=== 📈 数据变化统计 ===");
+                Console.WriteLine($"   之前行数: {e.PreviousData.Count}");
+                Console.WriteLine($"   当前行数: {e.DataRowCount}");
+                Console.WriteLine($"   行数变化: {(e.DataRowCount - e.PreviousData.Count):+#;-#;0}");
+                Console.WriteLine($"   文件修改时间: {File.GetLastWriteTime(e.FilePath):yyyy-MM-dd HH:mm:ss}");
+            }
+            else if (e.ChangeType == System.IO.WatcherChangeTypes.Created)
+            {
+                Console.WriteLine();
+                Console.WriteLine("=== 📈 新文件统计 ===");
+                Console.WriteLine($"   数据行数: {e.DataRowCount}");
+                Console.WriteLine($"   文件大小: {e.FileSize:N0} 字节");
+                Console.WriteLine($"   创建时间: {File.GetCreationTime(e.FilePath):yyyy-MM-dd HH:mm:ss}");
+            }
+            
+            // 原有的显示逻辑（保留作为备用）
+            if (false) // 禁用旧的显示逻辑
+            {
+                Console.WriteLine();
                 Console.WriteLine($"=== 变化后的完整文件内容 === (共 {e.DataRowCount} 行)");
                 
                 // 如果没有变化详情，显示前几行数据
@@ -776,6 +815,106 @@ namespace WatchFile.ConsoleTest
                 e.ProcessResultReason = $"处理异常: {ex.Message}";
                 Console.WriteLine($"📋 [处理结果] 异常 -> 处理失败: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 以表格格式展示数据
+        /// </summary>
+        private static void DisplayDataTable(string title, List<Dictionary<string, object>> data, int maxRows)
+        {
+            if (data == null || data.Count == 0)
+            {
+                Console.WriteLine($"   [{title}] 无数据");
+                return;
+            }
+
+            var displayCount = Math.Min(maxRows, data.Count);
+            
+            // 获取所有列名
+            var allColumns = new HashSet<string>();
+            foreach (var row in data.Take(displayCount))
+            {
+                foreach (var key in row.Keys)
+                {
+                    allColumns.Add(key);
+                }
+            }
+            var columns = allColumns.Take(10).ToList(); // 最多显示10列
+            
+            // 如果列太多，只显示前几列
+            if (allColumns.Count > 10)
+            {
+                Console.WriteLine($"   💡 提示：数据包含 {allColumns.Count} 列，仅显示前 10 列");
+            }
+            
+            // 计算每列的最大宽度（用于对齐）
+            var columnWidths = new Dictionary<string, int>();
+            foreach (var col in columns)
+            {
+                var maxWidth = Math.Max(col.Length, 10); // 最小宽度10
+                foreach (var row in data.Take(displayCount))
+                {
+                    if (row.ContainsKey(col))
+                    {
+                        var valueStr = row[col]?.ToString() ?? "";
+                        maxWidth = Math.Max(maxWidth, Math.Min(valueStr.Length, 30)); // 最大宽度30
+                    }
+                }
+                columnWidths[col] = maxWidth;
+            }
+
+            // 打印表头
+            Console.WriteLine();
+            Console.Write("   行号 | ");
+            foreach (var col in columns)
+            {
+                var width = columnWidths[col];
+                Console.Write($"{TruncateString(col, width).PadRight(width)} | ");
+            }
+            Console.WriteLine();
+            
+            // 打印分隔线
+            Console.Write("   -----|");
+            foreach (var col in columns)
+            {
+                Console.Write(new string('-', columnWidths[col] + 2) + "|");
+            }
+            Console.WriteLine();
+
+            // 打印数据行
+            for (int i = 0; i < displayCount; i++)
+            {
+                var row = data[i];
+                Console.Write($"   {(i + 1).ToString().PadLeft(4)} | ");
+                
+                foreach (var col in columns)
+                {
+                    var width = columnWidths[col];
+                    var value = row.ContainsKey(col) ? (row[col]?.ToString() ?? "") : "";
+                    Console.Write($"{TruncateString(value, width).PadRight(width)} | ");
+                }
+                Console.WriteLine();
+            }
+
+            // 显示省略的行数
+            if (data.Count > displayCount)
+            {
+                Console.WriteLine($"   ... 还有 {data.Count - displayCount} 行数据未显示");
+            }
+            
+            // 显示列数统计
+            Console.WriteLine($"   📊 总计: {data.Count} 行 × {allColumns.Count} 列");
+        }
+
+        /// <summary>
+        /// 截断字符串到指定长度
+        /// </summary>
+        private static string TruncateString(string str, int maxLength)
+        {
+            if (string.IsNullOrEmpty(str) || str.Length <= maxLength)
+                return str;
+            
+            return str.Substring(0, maxLength - 3) + "...";
         }
     }
 }
