@@ -26,6 +26,12 @@ namespace WatchFile.Core.Parsing
         {
             try
             {
+                // 简单模式：只检查文件是否存在，不解析内容
+                if (settings.SimpleMode)
+                {
+                    return ParseSimpleMode(filePath, settings);
+                }
+
                 return settings.FileType switch
                 {
                     FileType.CSV => ParseCsv(filePath, settings),
@@ -37,6 +43,42 @@ namespace WatchFile.Core.Parsing
             {
                 return new FileParseResult { Exception = ex };
             }
+        }
+
+        /// <summary>
+        /// 简单模式解析：不解析文件内容，只返回文件基本信息
+        /// </summary>
+        private static FileParseResult ParseSimpleMode(string filePath, FileSettings settings)
+        {
+            var result = new FileParseResult();
+
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    result.Exception = new FileNotFoundException($"文件不存在: {filePath}");
+                    return result;
+                }
+
+                var fileInfo = new FileInfo(filePath);
+                var simpleRecord = new Dictionary<string, object>
+                {
+                    ["FileName"] = fileInfo.Name,
+                    ["FilePath"] = filePath,
+                    ["FileSize"] = fileInfo.Length,
+                    ["LastWriteTime"] = fileInfo.LastWriteTime,
+                    ["CreationTime"] = fileInfo.CreationTime
+                };
+
+                result.Data = new List<Dictionary<string, object>> { simpleRecord };
+                result.IsSuccess = true;
+            }
+            catch (Exception ex)
+            {
+                result.Exception = ex;
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -177,6 +219,33 @@ namespace WatchFile.Core.Parsing
         {
             var record = new Dictionary<string, object>();
 
+            // 如果没有列映射配置，返回所有列的原始数据
+            if (settings.ColumnMappings == null || !settings.ColumnMappings.Any())
+            {
+                if (hasHeader)
+                {
+                    // 有标题的情况：使用列名作为键
+                    for (int i = 0; i < csv.HeaderRecord?.Length; i++)
+                    {
+                        var columnName = csv.HeaderRecord[i];
+                        var value = csv.GetField(i) ?? string.Empty;
+                        record[columnName] = value;
+                    }
+                }
+                else
+                {
+                    // 无标题的情况：使用Column_N作为键
+                    var recordLength = csv.Parser.Count;
+                    for (int i = 0; i < recordLength; i++)
+                    {
+                        var value = csv.GetField(i) ?? string.Empty;
+                        record[$"Column_{i}"] = value;
+                    }
+                }
+                return record;
+            }
+
+            // 原有的列映射逻辑
             foreach (var mapping in settings.ColumnMappings)
             {
                 try
@@ -228,6 +297,31 @@ namespace WatchFile.Core.Parsing
         {
             var record = new Dictionary<string, object>();
 
+            // 如果没有列映射配置，返回所有列的原始数据
+            if (settings.ColumnMappings == null || !settings.ColumnMappings.Any())
+            {
+                for (int i = 0; i < row.LastCellNum; i++)
+                {
+                    var cell = row.GetCell(i);
+                    var value = GetCellValue(cell);
+                    
+                    if (headerRow != null && settings.HasHeader)
+                    {
+                        // 有标题的情况：使用列名作为键
+                        var headerCell = headerRow.GetCell(i);
+                        var columnName = headerCell?.ToString()?.Trim() ?? $"Column_{i}";
+                        record[columnName] = value ?? string.Empty;
+                    }
+                    else
+                    {
+                        // 无标题的情况：使用Column_N作为键
+                        record[$"Column_{i}"] = value ?? string.Empty;
+                    }
+                }
+                return record;
+            }
+
+            // 原有的列映射逻辑
             foreach (var mapping in settings.ColumnMappings)
             {
                 try

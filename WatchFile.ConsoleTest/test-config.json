@@ -11,7 +11,7 @@
     {
       "id": "csv-monitor",
       "name": "CSV文件监控",
-      "enabled": true,
+      "enabled": false,
       "path": "TestData",
       "type": "Directory",
       "recursive": false,
@@ -202,6 +202,30 @@
           }
         ]
       }
+    },
+    {
+      "id": "simple-file-monitor",
+      "name": "简单文件监控（无内容解析）",
+      "enabled": true,
+      "path": "TestData",
+      "type": "Directory", 
+      "recursive": true,
+      "fileFilters": ["*.txt", "*.log", "*.dat"],
+      "excludePatterns": ["*.watchfile", "*.tmp", "*_backup_*"],
+      "watchEvents": ["Created", "Modified", "Deleted"],
+      "fileSettings": {
+        "simpleMode": true,
+        "fileType": "CSV"
+      },
+      "watchFileSettings": {
+        "watchFileDirectory": ".watch",
+        "watchFileExtension": ".watchfile",
+        "maxConcurrentFiles": 16,
+        "throwOnMissingWatchFile": false,
+        "enableDifferenceLogging": true,
+        "differenceLogPath": "logs/simple-differences.log"
+      },
+      "deleteAfterProcessing": false
     }
   ]
 }

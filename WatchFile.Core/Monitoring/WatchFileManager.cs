@@ -40,6 +40,12 @@ namespace WatchFile.Core.Monitoring
         {
             try
             {
+                // 简单模式：跳过watchfile的创建
+                if (_config.FileSettings.SimpleMode)
+                {
+                    return;
+                }
+
                 // 确保临时文件目录存在
                 if (!Directory.Exists(_watchDirectory))
                 {
@@ -98,6 +104,12 @@ namespace WatchFile.Core.Monitoring
 
             try
             {
+                // 简单模式：跳过watchfile处理，直接返回基础变化信息
+                if (_config.FileSettings.SimpleMode)
+                {
+                    return await ProcessSimpleModeChangeAsync(filePath, changeType);
+                }
+
                 switch (changeType)
                 {
                     case WatcherChangeTypes.Created:
@@ -123,6 +135,63 @@ namespace WatchFile.Core.Monitoring
                 // 临时文件问题时，按新增文件处理
                 return await HandleFileCreatedAsync(filePath, watchFilePath);
             }
+        }
+
+        /// <summary>
+        /// 简单模式文件变化处理：不创建watchfile，只返回基本变化信息
+        /// </summary>
+        private async Task<DataChangeDetails> ProcessSimpleModeChangeAsync(string filePath, WatcherChangeTypes changeType)
+        {
+            var changeDetails = new DataChangeDetails();
+
+            try
+            {
+                if (changeType == WatcherChangeTypes.Deleted)
+                {
+                    // 删除事件：创建一个包含文件路径的删除记录
+                    changeDetails.DeletedRows = new List<Dictionary<string, object>>
+                    {
+                        new Dictionary<string, object>
+                        {
+                            ["FileName"] = Path.GetFileName(filePath),
+                            ["FilePath"] = filePath,
+                            ["ChangeType"] = changeType.ToString()
+                        }
+                    };
+                }
+                else if (File.Exists(filePath))
+                {
+                    // 创建或修改事件：解析文件基本信息
+                    var parseResult = FileParser.ParseFile(filePath, _config.FileSettings);
+                    if (parseResult.IsSuccess)
+                    {
+                        // 在简单模式下，所有变化都视为"新增"（因为不进行内容比较）
+                        changeDetails.AddedRows = new List<Dictionary<string, object>>(parseResult.Data);
+                    }
+                }
+
+                // 记录差异日志（如果启用）
+                if (_config.WatchFileSettings.EnableDifferenceLogging)
+                {
+                    await LogDifferenceAsync($"SIMPLE_MODE_{changeType}", filePath, changeDetails);
+                }
+            }
+            catch (Exception ex)
+            {
+                // 简单模式下的错误处理：创建一个错误记录
+                changeDetails.AddedRows = new List<Dictionary<string, object>>
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["FileName"] = Path.GetFileName(filePath),
+                        ["FilePath"] = filePath,
+                        ["ChangeType"] = changeType.ToString(),
+                        ["Error"] = ex.Message
+                    }
+                };
+            }
+
+            return changeDetails;
         }
 
         /// <summary>

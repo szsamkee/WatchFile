@@ -29,7 +29,7 @@ namespace WatchFile.ConsoleTest
             Console.InputEncoding = Encoding.UTF8;
             
             Console.WriteLine("=== WatchFile 智能监控程序 ===");
-            Console.WriteLine("版本: 2.5.0");
+            Console.WriteLine("版本: 2.6.3");
             Console.WriteLine("支持: .NET Framework 4.6.1+ 和 .NET 6+");
             Console.WriteLine("功能: CSV/Excel 文件智能变化分析");
             Console.WriteLine("优化: 工控环境大量小文件监控");
@@ -40,8 +40,7 @@ namespace WatchFile.ConsoleTest
             try
             {
                 // 设置配置文件路径
-                //var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test-config.json");
-                var configPath = "D:\\aa\\印刷后测试监控方案.wat";
+                var configPath = "D:\\aa\\test.wat";
                 
                 // 创建管理器
                 _manager = new WatchManager(configPath);

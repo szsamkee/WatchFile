@@ -138,6 +138,11 @@ namespace WatchFile.Core.Configuration.Models
     public class FileSettings
     {
         /// <summary>
+        /// 监控模式：true=简单模式（只监控文件变化，不解析内容），false=详细模式（解析内容并比较差异）
+        /// </summary>
+        public bool SimpleMode { get; set; } = false;
+        
+        /// <summary>
         /// 文件类型（CSV 或 Excel）
         /// </summary>
         public FileType FileType { get; set; } = FileType.CSV;

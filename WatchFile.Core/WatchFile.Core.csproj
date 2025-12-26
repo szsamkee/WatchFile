@@ -7,7 +7,7 @@
     
     <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.6.2</PackageVersion>
+    <PackageVersion>2.7.0</PackageVersion>
     <Authors>不会写又爱写代码的老祁</Authors>
     <Company>老祁个人工作室</Company>
     <Product>WatchFile</Product>
@@ -21,6 +21,16 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>Copyright © 2024 老祁个人工作室</Copyright>
     <PackageReleaseNotes>
+      v2.7.0:
+      - 🚀 重大新增：SimpleMode简单文件监控模式
+      - ⚡ 灵活监控：支持跳过内容解析，只监控文件变化事件
+      - 🎯 用户自主：允许在事件回调中自行处理文件内容
+      - 📝 配置简化：简单模式下无需配置columnMappings
+      - 🔧 性能优化：简单模式跳过watchfile创建，减少磁盘IO
+      - 💡 向下兼容：保持原有详细解析模式的完整功能
+      - 🛠️ 解析增强：无columnMappings时自动返回所有列数据
+      - ⚙️ 配置验证：简单模式下放宽列映射验证要求
+      
       v2.6.2:
       - 🔧 版本同步更新：同步所有相关包信息和版本号
       - 🏷️ 版本标准化：确保版本信息在所有组件中保持一致

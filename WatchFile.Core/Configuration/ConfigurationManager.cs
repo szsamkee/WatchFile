@@ -163,6 +163,10 @@ namespace WatchFile.Core.Configuration
             if (settings.StartRow < 1)
                 throw new InvalidOperationException($"监控项 {itemId} 的开始行号必须大于0");
 
+            // 简单模式下不需要验证列映射
+            if (settings.SimpleMode)
+                return;
+
             if (settings.ColumnMappings != null)
             {
                 foreach (var mapping in settings.ColumnMappings)
