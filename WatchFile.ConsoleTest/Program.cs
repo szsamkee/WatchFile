@@ -41,7 +41,7 @@ namespace WatchFile.ConsoleTest
             {
                 // 设置配置文件路径
                 //var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test-config.json");
-                var configPath = "D:\\aa\\PT363印刷后性能检测.wat";
+                var configPath = "D:\\aa\\印刷后测试监控方案.wat";
                 
                 // 创建管理器
                 _manager = new WatchManager(configPath);

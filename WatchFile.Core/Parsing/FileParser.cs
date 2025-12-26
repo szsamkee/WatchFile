@@ -410,7 +410,7 @@ namespace WatchFile.Core.Parsing
         }
 
         /// <summary>
-        /// 自动检测文件编码（通过BOM）
+        /// 自动检测文件编码（通过BOM和第一行内容）
         /// </summary>
         private static Encoding DetectFileEncoding(string filePath)
         {
@@ -469,28 +469,110 @@ namespace WatchFile.Core.Parsing
                 }
             }
 
-            // 🔧 智能检测：如果没有BOM，尝试判断是否为中文编码
-            // D6 B1 C1 F7 等字节范围通常是GB2312/GBK编码
-            if (bom[0] >= 0xB0 && bom[0] <= 0xF7)
+            // 🔧 智能检测：通过第一行内容判断编码
+            return DetectEncodingByFirstLine(filePath);
+        }
+
+        /// <summary>
+        /// 通过第一行内容检测文件编码
+        /// </summary>
+        private static Encoding DetectEncodingByFirstLine(string filePath)
+        {
+            // 尝试不同编码读取第一行，看哪个能正确解析中文
+            var encodingsToTry = new[]
+            {
+                new { Encoding = Encoding.GetEncoding("GBK"), Name = "GBK" },
+                new { Encoding = Encoding.GetEncoding("GB2312"), Name = "GB2312" },
+                new { Encoding = Encoding.UTF8, Name = "UTF-8" },
+                new { Encoding = Encoding.Unicode, Name = "UTF-16LE" },
+                new { Encoding = Encoding.BigEndianUnicode, Name = "UTF-16BE" },
+                new { Encoding = Encoding.ASCII, Name = "ASCII" }
+            };
+
+            foreach (var encodingInfo in encodingsToTry)
             {
                 try
                 {
-                    return Encoding.GetEncoding("GBK");
+                    using var reader = new StreamReader(filePath, encodingInfo.Encoding);
+                    var firstLine = reader.ReadLine();
+                    
+                    if (string.IsNullOrEmpty(firstLine))
+                        continue;
+
+                    // 检查是否包含中文字符，并且没有乱码
+                    if (ContainsChineseCharacters(firstLine) && !ContainsGarbledText(firstLine))
+                    {
+                        return encodingInfo.Encoding;
+                    }
+                    
+                    // 如果没有中文字符但也没有乱码，记录为候选编码
+                    if (!ContainsGarbledText(firstLine))
+                    {
+                        // 对于纯ASCII内容，优先选择UTF-8
+                        if (encodingInfo.Name == "UTF-8")
+                        {
+                            return encodingInfo.Encoding;
+                        }
+                    }
                 }
                 catch
                 {
-                    try
-                    {
-                        return Encoding.GetEncoding("GB2312");
-                    }
-                    catch
-                    {
-                        return null; // 返回null，使用配置的编码
-                    }
+                    // 该编码无法读取，尝试下一个
+                    continue;
                 }
             }
 
+            // 如果都无法确定，返回null使用配置的编码
             return null;
+        }
+
+        /// <summary>
+        /// 检查字符串是否包含中文字符
+        /// </summary>
+        private static bool ContainsChineseCharacters(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return false;
+
+            foreach (char c in text)
+            {
+                // 中文字符的Unicode范围
+                if ((c >= 0x4E00 && c <= 0x9FFF) ||  // CJK统一汉字
+                    (c >= 0x3400 && c <= 0x4DBF) ||  // CJK扩展A
+                    (c >= 0xF900 && c <= 0xFAFF))    // CJK兼容汉字
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 检查字符串是否包含乱码字符
+        /// </summary>
+        private static bool ContainsGarbledText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return false;
+
+            // 检查是否包含常见的乱码字符
+            var garbledCount = 0;
+            foreach (char c in text)
+            {
+                // 替换字符 (常见的乱码字符)
+                if (c == 0xFFFD || c == '�')
+                {
+                    garbledCount++;
+                }
+                // 连续的问号也可能是乱码
+                if (c == '?' && text.Contains("???"))
+                {
+                    garbledCount++;
+                }
+            }
+
+            // 如果乱码字符超过一定比例，认为是乱码
+            return garbledCount > 0 && (double)garbledCount / text.Length > 0.1;
         }
     }
 }

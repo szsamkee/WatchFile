@@ -7,7 +7,7 @@
     
     <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.6.1</PackageVersion>
+    <PackageVersion>2.6.2</PackageVersion>
     <Authors>不会写又爱写代码的老祁</Authors>
     <Company>老祁个人工作室</Company>
     <Product>WatchFile</Product>
@@ -21,6 +21,18 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>Copyright © 2024 老祁个人工作室</Copyright>
     <PackageReleaseNotes>
+      v2.6.2:
+      - 🔧 版本同步更新：同步所有相关包信息和版本号
+      - 🏷️ 版本标准化：确保版本信息在所有组件中保持一致
+      - 📦 包管理优化：优化NuGet包发布流程
+      - ✨ 稳定性提升：基于v2.6.1版本的稳定性改进
+      
+      v2.6.1:
+      - 📝 文档更新：完善API文档和使用指南
+      - 🔧 配置优化：改进配置管理和验证逻辑
+      - 🛠️ Bug修复：修复已知问题，提升稳定性
+      - 📦 包信息更新：同步更新NuGet包描述和标签
+      
       v2.5.0:
       - 🚀 重大改进：新增 AutoTriggerFileChangedEvents 配置选项
       - ✨ 自动模式：离线检测变化可自动转换为 FileChanged 事件，简化用户代码
