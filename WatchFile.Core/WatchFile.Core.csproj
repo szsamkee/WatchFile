@@ -7,7 +7,7 @@
     
     <!-- NuGet 包信息 -->
     <PackageId>WatchFile.Core</PackageId>
-    <PackageVersion>2.6.3</PackageVersion>
+    <PackageVersion>2.7.1</PackageVersion>
     <Authors>不会写又爱写代码的老祁</Authors>
     <Company>老祁个人工作室</Company>
     <Product>WatchFile</Product>
@@ -21,6 +21,11 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Copyright>Copyright © 2024 老祁个人工作室</Copyright>
     <PackageReleaseNotes>
+      v2.7.1:
+      - 🔁 版本更正：将误发版本 2.6.3 更正为 2.7.1
+      - 🔧 包含：SimpleMode 按配置 encoding 读取内容，避免乱码
+      - 📝 增强：SimpleMode 返回 ConfiguredEncoding、EncodingUsed、Content
+
       v2.6.3:
       - 🔧 修复：SimpleMode 按配置文件 encoding 读取文件内容，避免乱码
       - 📝 增强：SimpleMode 事件数据中新增 ConfiguredEncoding、EncodingUsed、Content 字段
