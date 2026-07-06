@@ -61,13 +61,23 @@ namespace WatchFile.Core.Parsing
                 }
 
                 var fileInfo = new FileInfo(filePath);
+                var configuredEncoding = GetEncoding(settings.Encoding);
+                string fileContent;
+                using (var reader = new StreamReader(filePath, configuredEncoding, detectEncodingFromByteOrderMarks: false))
+                {
+                    fileContent = reader.ReadToEnd();
+                }
+
                 var simpleRecord = new Dictionary<string, object>
                 {
                     ["FileName"] = fileInfo.Name,
                     ["FilePath"] = filePath,
                     ["FileSize"] = fileInfo.Length,
                     ["LastWriteTime"] = fileInfo.LastWriteTime,
-                    ["CreationTime"] = fileInfo.CreationTime
+                    ["CreationTime"] = fileInfo.CreationTime,
+                    ["ConfiguredEncoding"] = settings.Encoding,
+                    ["EncodingUsed"] = configuredEncoding.WebName,
+                    ["Content"] = fileContent
                 };
 
                 result.Data = new List<Dictionary<string, object>> { simpleRecord };
